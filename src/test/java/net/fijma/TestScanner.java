@@ -54,9 +54,14 @@ public class TestScanner {
 
     @Test
     void testOperators() {
-        test("a double char operator", "x:=y", List.of("Word(x)", "Becomes", "Word(y)", "EndOfProgram"));
-        test("double char operators cannot contain whitespace", "x: =y", List.of("Word(x)", "Colon", "InvalidToken(=)", "Word(y)", "EndOfProgram"));
+        test("a double char operator (becomes)", "x:=y", List.of("Word(x)", "Becomes", "Word(y)", "EndOfProgram"));
+        test("a double char operator (equals)", "x==y", List.of("Word(x)", "Equals", "Word(y)", "EndOfProgram"));
+        test("javascript sucks", "x===y", List.of("Word(x)", "ReallyEquals", "Word(y)", "EndOfProgram"));
+        test("javascript sucks (part 2)", "x== =y", List.of("Word(x)", "Equals", "Is", "Word(y)", "EndOfProgram"));
+        test("double char operators cannot contain whitespace", "x: =y", List.of("Word(x)", "Colon", "Is", "Word(y)", "EndOfProgram"));
         test("some regular sequence of words and punctuation", "x(y)", List.of("Word(x)", "ParOpen", "Word(y)", "ParClose", "EndOfProgram"));
+        test("brackets", "(){}[]", List.of("ParOpen", "ParClose", "CurlyOpen", "CurlyClose", "SquareOpen", "SquareClose", "EndOfProgram"));
+        // test("dot", ".", List.of("Dot", "EndOfProgram"));
     }
 
     @Test

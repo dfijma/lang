@@ -79,10 +79,9 @@ public class Scanner implements AutoCloseable{
                 return;
             }
 
-            final var simpleSymbol = Symbol.fromSingleChar(scanner.current());
-            if (simpleSymbol != null) {
-                current = simpleSymbol;
-                scanner.skip();
+            final var symbol = parseSymbol();
+            if (symbol != null) {
+                current = symbol;
                 return;
             }
 
@@ -128,6 +127,59 @@ public class Scanner implements AutoCloseable{
             current = new InvalidToken(Character.toString(scanner.current()));
             scanner.skip();
         }
+    }
+
+    private Symbol parseSymbol() throws IOException {
+        final var c = scanner.current();
+
+        final var s = switch (c) {
+            case '(' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.ParOpen); }
+            case ')' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.ParClose); }
+            case '{' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.CurlyOpen); }
+            case '}' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.CurlyClose); }
+            case '[' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.SquareOpen); }
+            case ']' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.SquareClose); }
+            case '@' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.At); }
+            case '>' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Larger); }
+            case '<' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Smaller); }
+            case '!' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Exclamation); }
+            case ',' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Comma); }
+            case '+' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Plus); }
+            case '-' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Minus); }
+            case ';' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.SemiColon); }
+            case ':' -> { // ":", ":=" and "=" are all valid, also like this: "<<", ">>" "?:", "<=", ">", "!=", "++", "--"
+                scanner.skip();
+                final var c2 = scanner.current();
+                yield switch (c2) {
+                    case '=' -> {
+                        scanner.skip();
+                        yield new Symbol(Symbol.SymbolType.Becomes);
+                    }
+                    default -> new Symbol(Symbol.SymbolType.Colon);
+                };
+            }
+            case '=' -> { // "=", "==" and "===" are all valid (like <<=, >>=)
+                scanner.skip();
+                final var c2 = scanner.current();
+                yield switch (c2) {
+                    case '=' -> {
+                        scanner.skip();
+                        final var c3 = scanner.current();
+                        yield switch (c3) {
+                            case '=' -> {
+                                scanner.skip();
+                                yield new Symbol(Symbol.SymbolType.ReallyEquals);
+                            }
+                            default -> new Symbol(Symbol.SymbolType.Equals);
+                        };
+                    }
+                    default -> new Symbol(Symbol.SymbolType.Is);
+                };            }
+            default -> null;
+        };
+
+        return s;
+
     }
 
     @Override
