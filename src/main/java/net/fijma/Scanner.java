@@ -74,20 +74,15 @@ public class Scanner implements AutoCloseable{
                 return;
             }
 
-            if (scanner.current() == '(') {
-                current = new ParOpen();
-                scanner.skip();
-                return;
-            }
-
-            if (scanner.current() == ')') {
-                current = new ParClose();
-                scanner.skip();
-                return;
-            }
-
             if (scanner.current() == '\0') {
                 current = new EndOfProgram();
+                return;
+            }
+
+            final var simpleSymbol = Symbol.fromSingleChar(scanner.current());
+            if (simpleSymbol != null) {
+                current = simpleSymbol;
+                scanner.skip();
                 return;
             }
 
@@ -95,9 +90,9 @@ public class Scanner implements AutoCloseable{
                 scanner.skip();
                 if (scanner.current() == '=') {
                     scanner.skip();
-                    current = new Becomes();
+                    current = new Symbol(Symbol.SymbolType.Becomes);
                 } else {
-                    current = new Colon();
+                    current = new Symbol(Symbol.SymbolType.Colon);
                 }
                 return;
             }
