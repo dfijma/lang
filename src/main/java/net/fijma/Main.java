@@ -21,7 +21,7 @@ public class Main {
     public static void main(String[] args) {
 
         prompt();
-        try (Tokenizer t = Tokenizer.create(System.in)) {
+        try (Scanner t = Scanner.create(System.in)) {
 
             boolean done = false;
 
