@@ -1,4 +1,4 @@
-package net.fijma;
+package net.fijma.token;
 
 public class Word extends Token{
 

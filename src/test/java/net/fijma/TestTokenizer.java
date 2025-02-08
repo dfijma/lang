@@ -1,6 +1,8 @@
 
 package net.fijma;
 
+import net.fijma.token.EndOfProgram;
+import net.fijma.token.Token;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
@@ -59,9 +61,9 @@ public class TestTokenizer {
 
     @Test
     void testStrings() {
-        test("the empty string", "\"\"", List.of("StringFragment()", "EndOfProgram"));
-        test("some regular string", "\"abc def\"", List.of("StringFragment(abc def)", "EndOfProgram"));
-        test("string with escaping", "\"a\\b\\\\c\\nd\\ef\"", List.of("StringFragment(a\\b\\\\c\\nd\\ef)", "EndOfProgram"));
+        test("the empty string", "\"\"", List.of("StringConstant()", "EndOfProgram"));
+        test("some regular string", "\"abc def\"", List.of("StringConstant(abc def)", "EndOfProgram"));
+        test("string with escaping", "\"a\\b\\\\c\\nd\\ef\"", List.of("StringConstant(a\\b\\\\c\\nd\\ef)", "EndOfProgram"));
         test("non-terminated string (end of line)", "\"a\n", List.of("InvalidToken(non-terminated string fragment: a)", "NewLine", "EndOfProgram"));
         test("non-terminated string (end of file)", "\"a", List.of("InvalidToken(non-terminated string fragment: a)", "EndOfProgram"));
         test("tokenizer can recover after non-terminated string", "\"a\nabc", List.of("InvalidToken(non-terminated string fragment: a)", "NewLine", "Word(abc)", "EndOfProgram"));

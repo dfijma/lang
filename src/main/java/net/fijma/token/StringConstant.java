@@ -1,10 +1,9 @@
-package net.fijma;
+package net.fijma.token;
 
-public class Number extends Token {
-
+public class StringConstant extends Token {
     private final String value;
 
-    public Number(String value) {
+    public StringConstant(String value) {
         this.value = value;
     }
 
@@ -12,6 +11,6 @@ public class Number extends Token {
 
     @Override
     public String toString() {
-        return "Number(%s)".formatted(value);
+        return "StringConstant(%s)".formatted(value);
     }
 }

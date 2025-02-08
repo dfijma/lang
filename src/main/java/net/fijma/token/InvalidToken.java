@@ -1,9 +1,10 @@
-package net.fijma;
+package net.fijma.token;
 
-public class StringFragment extends Token {
+public class InvalidToken extends Token {
+
     private final String value;
 
-    public StringFragment(String value) {
+    public InvalidToken(String value) {
         this.value = value;
     }
 
@@ -11,6 +12,6 @@ public class StringFragment extends Token {
 
     @Override
     public String toString() {
-        return "StringFragment(%s)".formatted(value);
+        return "InvalidToken(%s)".formatted(value);
     }
 }

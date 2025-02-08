@@ -1,16 +1,20 @@
 package net.fijma;
 
+import net.fijma.token.*;
+import net.fijma.token.Number;
+
 import java.io.IOException;
 import java.io.InputStream;
 
 public class Tokenizer implements AutoCloseable{
 
     private final Scanner scanner;
+    private final StringBuilder sb = new StringBuilder();
     private Token current;
 
     private Tokenizer(Scanner scanner) {
         this.scanner = scanner;
-        this.current = new InvalidToken("dummy");
+        this.current = null;
     }
 
     public static Tokenizer create(InputStream is) throws IOException {
@@ -25,6 +29,11 @@ public class Tokenizer implements AutoCloseable{
 
     private boolean deferredSkip = false;
 
+    private void setDeferredSkip() {
+        if (deferredSkip) throw new IllegalStateException("Deferred skip already set");
+        deferredSkip = true;
+    }
+
     public void skip() throws IOException {
         if (deferredSkip) {
             scanner.skip();
@@ -37,12 +46,12 @@ public class Tokenizer implements AutoCloseable{
             }
 
             if (scanner.current() == '\n') {
-                deferredSkip = true;
+                setDeferredSkip();
                 current = new NewLine();
                 return;
             }
 
-            StringBuilder sb = new StringBuilder();
+            sb.setLength(0);
 
             if (Character.isDigit(scanner.current()) || scanner.current() == '.') {
                 int dots = 0;
@@ -56,7 +65,7 @@ public class Tokenizer implements AutoCloseable{
 
                 final String value = sb.toString();
                 if (dots == 0) {
-                    current = new Number(value);
+                    current = new net.fijma.token.Number(value);
                 } else if (dots == 1 && value.lastIndexOf('.') != value.length()-1) {
                     current = new Number(value);
                 } else {
@@ -103,10 +112,9 @@ public class Tokenizer implements AutoCloseable{
                 }
                 if (scanner.current() == '"') {
                     scanner.skip();
-                    current = new StringFragment(sb.toString());
+                    current = new StringConstant(sb.toString());
                     return;
                 } else if (scanner.current() == '\n'|| scanner.current() == '\0') {
-                    // deferredSkip = true;
                     current = new InvalidToken("non-terminated string fragment: %s".formatted(sb.toString()));
                     return;
                 }

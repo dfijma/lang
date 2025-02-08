@@ -1,6 +1,7 @@
 package net.fijma;
 
-import java.util.logging.Logger;
+import net.fijma.token.EndOfProgram;
+import net.fijma.token.NewLine;
 
 public class Main {
 
@@ -26,10 +27,8 @@ public class Main {
 
             while (!done) {
                 switch (t.current()) {
-                    case EndOfProgram ignored -> {
-                        done = true;
-                    }
-                    case NewLine newLine -> {
+                    case EndOfProgram ignored -> done = true;
+                    case NewLine ignored -> {
                         if (any) {
                             System.out.print("\n");
                         }
