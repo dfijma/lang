@@ -28,7 +28,9 @@ public class TestScanner {
     @Test
     void testNumber() {
         test("a regular float", "123.010", List.of("Number(123.010)", "EndOfProgram"));
+        /* FIXME: numbers could start with "." without conflicting with a "." operator
         test("zero can be omitted", ".123", List.of("Number(.123)", "EndOfProgram"));
+         */
         test("zero can be omitted", "0.123", List.of("Number(0.123)", "EndOfProgram"));
         test("but not at the end", "123.", List.of("InvalidToken(invalid number: 123.)", "EndOfProgram"));
         test("a regular integer", "456", List.of("Number(456)", "EndOfProgram"));
@@ -74,7 +76,18 @@ public class TestScanner {
         test("tokenizer can recover after non-terminated string", "\"a\nabc", List.of("InvalidToken(non-terminated string fragment: a)", "NewLine", "Word(abc)", "EndOfProgram"));
         test("empty non terminated (end of line)", "\"\n", List.of("InvalidToken(non-terminated string fragment: )", "NewLine", "EndOfProgram"));
         test("empty non terminated (end of file)", "\"", List.of("InvalidToken(non-terminated string fragment: )", "EndOfProgram"));
-        test("empty non terminated (expliciet end of file)", "\"\0", List.of("InvalidToken(non-terminated string fragment: )", "EndOfProgram"));
+        test("empty non terminated (explicit end of file)", "\"\0", List.of("InvalidToken(non-terminated string fragment: )", "EndOfProgram"));
+        test("no need to escape single quote in double quoted string", "\"a'bc\"", List.of("StringConstant(a'bc)", "EndOfProgram"));
+
+    }
+
+    @Test
+    void testSingleQuotedString() {
+        test("some regular string (single quoted)", "'abc def'", List.of("StringConstant(abc def)", "EndOfProgram"));
+        test("empty non terminated (single quoted, end of line)", "'\n", List.of("InvalidToken(non-terminated string fragment: )", "NewLine", "EndOfProgram"));
+        test("empty non terminated (single quoted, end of file)", "'", List.of("InvalidToken(non-terminated string fragment: )", "EndOfProgram"));
+        test("empty non terminated (single quored explicit end of file)", "'\0", List.of("InvalidToken(non-terminated string fragment: )", "EndOfProgram"));
+        test("no need to escape double quote in single quoted string", "'a\"bc'", List.of("StringConstant(a\"bc)", "EndOfProgram"));
     }
 
     public void test(String reason, String input, List<String> expected) {

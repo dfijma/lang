@@ -53,7 +53,7 @@ public class Scanner implements AutoCloseable{
 
             sb.setLength(0);
 
-            if (Character.isDigit(scanner.current()) || scanner.current() == '.') {
+            if (Character.isDigit(scanner.current()) /* || scanner.current() == '.' */) {
                 int dots = 0;
                 do {
                     sb.append(scanner.current());
@@ -96,15 +96,16 @@ public class Scanner implements AutoCloseable{
                 return;
             }
 
-            if (scanner.current() == '"') {
+            if (scanner.current() == '"' || scanner.current() == '\'') {
+                final char openChar = scanner.current();
                 scanner.skip();
                 boolean escape = false;
-                while (escape || (scanner.current() != '"') && scanner.current() != '\n' && scanner.current() != '\0') {
+                while (escape || (scanner.current() != openChar) && scanner.current() != '\n' && scanner.current() != '\0') {
                     escape = !escape && scanner.current() == '\\';
                     sb.append(scanner.current());
                     scanner.skip();
                 }
-                if (scanner.current() == '"') {
+                if (scanner.current() == openChar) {
                     scanner.skip();
                     current = new StringConstant(sb.toString());
                     return;
@@ -139,6 +140,9 @@ public class Scanner implements AutoCloseable{
             case '}' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.CurlyClose); }
             case '[' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.SquareOpen); }
             case ']' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.SquareClose); }
+            case '.' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Dot); }
+            case '*' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Star); }
+            case '/' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Slash); }
             case '@' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.At); }
             case '>' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Larger); }
             case '<' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Smaller); }
@@ -147,6 +151,8 @@ public class Scanner implements AutoCloseable{
             case '+' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Plus); }
             case '-' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Minus); }
             case ';' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.SemiColon); }
+            case '|' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Pipe); }
+            case '&' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Ampersand); }
             case ':' -> { // ":", ":=" and "=" are all valid, also like this: "<<", ">>" "?:", "<=", ">", "!=", "++", "--"
                 scanner.skip();
                 final var c2 = scanner.current();
