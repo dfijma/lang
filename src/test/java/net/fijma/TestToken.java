@@ -10,8 +10,8 @@ public class TestToken {
 
     @Test
     public void test() {
-        Symbol s = new Symbol(Symbol.SymbolType.ParOpen);
-        assertThat("ParOpen", is(s.toString()));
+        Symbol s = new Symbol(Symbol.SymbolType.LeftParenthesis);
+        assertThat("LeftParenthesis", is(s.toString()));
     }
 
     @Test
