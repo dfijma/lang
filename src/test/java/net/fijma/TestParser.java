@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Optional;
 
 
@@ -44,17 +45,29 @@ public class TestParser {
     public void test(String reason, String input, String expected) {
         final ByteArrayInputStream bais = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
         try (Scanner t = Scanner.create(bais)) {
-            final Optional<Expression> expression = Parser.parse(t);
-            assertThat(reason, expression.isPresent(), is(expected != null));
+            final Optional<List<Expression>> expressionList = Parser.parse(t);
+            assertThat(reason, expressionList.isPresent(), is(expected != null));
             if (expected != null) {
-                if (expression.isEmpty()) {
+                if (expressionList.isEmpty()) {
                     throw new AssertionError(reason);
                 }
-                System.out.println(expression.get());
-                assertThat(reason, expression.get().toString(), is(expected));
+                System.out.println(expressionList.get());
+                assertThat(reason, expressionList.get().getLast().toString(), is(expected));
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Test
+    public void testList() {
+        test("additional newlines ignored", "\n\n10;\n\n\n14\n\n\n", "14");
+        test("full ; \n", "10;\n11;\n", "11");
+        test("terminated full ; \n", "15;\n", "15");
+        test("first expression not terminated", "10 12;\n", null);
+        test("optional \n", "10;12", "12");
+        test("optional '", "10\n13", "13");
+        test("end of program terminates", "16\013", "16");
+        test("terminated by just end of program", "10;13\0", "13");
     }
 }

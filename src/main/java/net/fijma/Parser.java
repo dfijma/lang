@@ -3,6 +3,8 @@ package net.fijma;
 import net.fijma.token.*;
 
 import java.io.IOException;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -14,21 +16,47 @@ public class Parser {
         this.scanner = scanner;
     }
 
-    static Optional<Expression> parse(Scanner scanner) throws IOException {
+    static Optional<List<Expression>> parse(Scanner scanner) throws IOException {
         final var parser = new Parser(scanner);
         return parser.parseProgram();
     }
 
-    private Optional<Expression> parseProgram() throws IOException {
+    // expression_list <- <NL>* expression [; or <NL> or both] [expression_list]
+    private Optional<List<Expression>> parseExpressionList() throws IOException {
+
+        var startingNewLine = parseToken(NewLine.class);
+        while (startingNewLine.isPresent()) {
+            startingNewLine = parseToken(NewLine.class);
+        }
+
         final Optional<Expression> expression = parseExpression();
         if (expression.isEmpty()) return Optional.empty();
 
-        final var ignored = parseNewLine();
+        final var semicolon = parseSymbol(Symbol.SymbolType.Semicolon);
+        final var newline = parseToken(NewLine.class);
+        final var endOfProgram = parseToken(EndOfProgram.class);
+        if (semicolon.isEmpty() && newline.isEmpty() && endOfProgram.isEmpty()) return Optional.empty();
+
+        final Optional<List<Expression>> expressions = parseExpressionList();
+        if (expressions.isEmpty()) {
+            final List<Expression> result = new LinkedList<>();
+            result.add(expression.get());
+            return Optional.of(result);
+        } else {
+            final List<Expression> result = expressions.get();
+            result.addFirst(expression.get());
+            return Optional.of(result);
+        }
+    }
+
+    private Optional<List<Expression>> parseProgram() throws IOException {
+        final Optional<List<Expression>> expressionList = parseExpressionList();
+        if (expressionList.isEmpty()) return Optional.empty();
 
         final var endOfProgram = parseEndOfProgram();
         if (endOfProgram.isEmpty()) return Optional.empty();
 
-        return expression;
+        return expressionList;
     }
 
     // expression <- term [ additive-operator expression]
@@ -110,6 +138,15 @@ public class Parser {
             case EndOfProgram ignored -> Optional.of(current);
             default -> Optional.empty();
         };
+    }
+
+    private <T extends Token> Optional<Token> parseToken(Class<T> tokenClass) throws IOException {
+        final var current = scanner.current();
+        if (tokenClass.isInstance(current)) {
+            scanner.skip();
+            return Optional.of(current);
+        }
+        return Optional.empty();
     }
 
 
