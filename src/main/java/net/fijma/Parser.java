@@ -1,7 +1,6 @@
 package net.fijma;
 
-import net.fijma.token.NumberConstant;
-import net.fijma.token.Symbol;
+import net.fijma.token.*;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -17,7 +16,19 @@ public class Parser {
 
     static Optional<Expression> parse(Scanner scanner) throws IOException {
         final var parser = new Parser(scanner);
-        return parser.parseExpression();
+        return parser.parseProgram();
+    }
+
+    private Optional<Expression> parseProgram() throws IOException {
+        final Optional<Expression> expression = parseExpression();
+        if (expression.isEmpty()) return Optional.empty();
+
+        final var ignored = parseNewLine();
+
+        final var endOfProgram = parseEndOfProgram();
+        if (endOfProgram.isEmpty()) return Optional.empty();
+
+        return expression;
     }
 
     // expression <- term [ additive-operator expression]
@@ -81,6 +92,26 @@ public class Parser {
             default -> Optional.empty();
         };
     }
+
+    private Optional<Token> parseNewLine() throws IOException {
+        final var current = scanner.current();
+        return switch (current) {
+            case NewLine ignored -> {
+                scanner.skip();
+                yield Optional.of(current);
+            }
+            default -> Optional.empty();
+        };
+    }
+
+    private Optional<Token> parseEndOfProgram() throws IOException {
+        final var current = scanner.current();
+        return switch (current) {
+            case EndOfProgram ignored -> Optional.of(current);
+            default -> Optional.empty();
+        };
+    }
+
 
     private Optional<Symbol> parseSymbol(Symbol.SymbolType expectedSymbol) throws IOException {
         return parseSymbol(Set.of(expectedSymbol));
