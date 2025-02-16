@@ -45,7 +45,8 @@ public class TestParser {
     public void test(String reason, String input, String expected) {
         final ByteArrayInputStream bais = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
         try (Scanner t = Scanner.create(bais)) {
-            final Optional<List<Expression>> expressionList = Parser.parse(t);
+            Parser parser = Parser.create(t);
+            final Optional<List<Expression>> expressionList = parser.parseProgram();
             assertThat(reason, expressionList.isPresent(), is(expected != null));
             if (expected != null) {
                 if (expressionList.isEmpty()) {

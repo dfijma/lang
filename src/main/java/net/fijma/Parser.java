@@ -13,12 +13,7 @@ public class Parser {
         this.scanner = scanner;
     }
 
-    static Optional<List<Expression>> parse(Scanner scanner) throws IOException {
-        final var parser = new Parser(scanner);
-        return parser.parseProgram();
-    }
-
-    static Parser create(Scanner scanner) throws IOException {
+    static Parser create(Scanner scanner)  {
         return new Parser(scanner);
     }
 
@@ -48,42 +43,19 @@ public class Parser {
         return new Unit(scanner.current() instanceof EndOfProgram, Optional.empty());
     }
 
-    // expression_list <- <NL>* expression [; or <NL> or both] [expression_list]
-    private Optional<List<Expression>> parseExpressionList() throws IOException {
-
-        var startingNewLine = parseToken(NewLine.class);
-        while (startingNewLine.isPresent()) {
-            startingNewLine = parseToken(NewLine.class);
+    public Optional<List<Expression>> parseProgram() throws IOException {
+        List<Expression> result = new LinkedList<>();
+        while (true) {
+            final Unit unit = parseUnit();
+            if (unit.expressions().isPresent()) {
+                result.addAll(unit.expressions().get());
+            } else {
+                return Optional.empty();
+            }
+            if (unit.isLast()) break;
+            scanner.skip();
         }
-
-        final Optional<Expression> expression = parseExpression();
-        if (expression.isEmpty()) return Optional.empty();
-
-        final var semicolon = parseSymbol(Symbol.SymbolType.Semicolon);
-        final var newline = parseToken(NewLine.class);
-        final var endOfProgram = parseToken(EndOfProgram.class);
-        if (semicolon.isEmpty() && newline.isEmpty() && endOfProgram.isEmpty()) return Optional.empty();
-
-        final Optional<List<Expression>> expressions = parseExpressionList();
-        if (expressions.isEmpty()) {
-            final List<Expression> result = new LinkedList<>();
-            result.add(expression.get());
-            return Optional.of(result);
-        } else {
-            final List<Expression> result = expressions.get();
-            result.addFirst(expression.get());
-            return Optional.of(result);
-        }
-    }
-
-    private Optional<List<Expression>> parseProgram() throws IOException {
-        final Optional<List<Expression>> expressionList = parseExpressionList();
-        if (expressionList.isEmpty()) return Optional.empty();
-
-        final var endOfProgram = parseEndOfProgram();
-        if (endOfProgram.isEmpty()) return Optional.empty();
-
-        return expressionList;
+        return Optional.of(result);
     }
 
     // expression <- term [ additive-operator expression]
