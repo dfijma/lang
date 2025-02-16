@@ -4,7 +4,8 @@ public class Word extends Token{
 
     private final String value;
 
-    public Word(String value) {
+    public Word(int line, int column, String value) {
+        super(line, column);
         this.value = value;
     }
 
@@ -12,6 +13,6 @@ public class Word extends Token{
 
     @Override
     public String toString() {
-        return "Word(%s)".formatted(value);
+        return "Word(%s)".formatted(value) + super.toString();
     }
 }

@@ -10,13 +10,13 @@ public class TestToken {
 
     @Test
     public void test() {
-        Symbol s = new Symbol(Symbol.SymbolType.LeftParenthesis);
+        Symbol s = new Symbol(1, 1, Symbol.SymbolType.LeftParenthesis);
         assertThat("LeftParenthesis", is(s.toString()));
     }
 
     @Test
     public void test2() {
-        Symbol s = new Symbol(Symbol.SymbolType.Becomes);
+        Symbol s = new Symbol(1, 1, Symbol.SymbolType.Becomes);
         assertThat("Becomes", is(s.toString()));
     }
 

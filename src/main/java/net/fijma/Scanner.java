@@ -45,9 +45,12 @@ public class Scanner implements AutoCloseable{
                 scanner.skip();
             }
 
+            final int line = scanner.line();
+            final int column = scanner.column();
+
             if (scanner.current() == '\n') {
                 setDeferredSkip();
-                current = new NewLine();
+                current = new NewLine(line, column);
                 return;
             }
 
@@ -65,21 +68,21 @@ public class Scanner implements AutoCloseable{
 
                 final String value = sb.toString();
                 if (dots == 0) {
-                    current = new NumberConstant(value);
+                    current = new NumberConstant(line, column, value);
                 } else if (dots == 1 && value.lastIndexOf('.') != value.length()-1) {
-                    current = new NumberConstant(value);
+                    current = new NumberConstant(line, column, value);
                 } else {
-                    current = new InvalidToken("invalid number: %s".formatted(value));
+                    current = new InvalidToken(line, column, "invalid number: %s".formatted(value));
                 }
                 return;
             }
 
             if (scanner.current() == '\0') {
-                current = new EndOfProgram();
+                current = new EndOfProgram(line, column);
                 return;
             }
 
-            final var symbol = parseSymbol();
+            final var symbol = parseSymbol(line, column);
             if (symbol != null) {
                 current = symbol;
                 return;
@@ -89,9 +92,9 @@ public class Scanner implements AutoCloseable{
                 scanner.skip();
                 if (scanner.current() == '=') {
                     scanner.skip();
-                    current = new Symbol(Symbol.SymbolType.Becomes);
+                    current = new Symbol(line, column, Symbol.SymbolType.Becomes);
                 } else {
-                    current = new Symbol(Symbol.SymbolType.Colon);
+                    current = new Symbol(line, column, Symbol.SymbolType.Colon);
                 }
                 return;
             }
@@ -107,10 +110,10 @@ public class Scanner implements AutoCloseable{
                 }
                 if (scanner.current() == openChar) {
                     scanner.skip();
-                    current = new StringConstant(sb.toString());
+                    current = new StringConstant(line, column, sb.toString());
                     return;
                 } else if (scanner.current() == '\n'|| scanner.current() == '\0') {
-                    current = new InvalidToken("non-terminated string fragment: %s".formatted(sb.toString()));
+                    current = new InvalidToken(line, column, "non-terminated string fragment: %s".formatted(sb.toString()));
                     return;
                 }
             }
@@ -121,47 +124,47 @@ public class Scanner implements AutoCloseable{
                     scanner.skip();
                 } while (scanner.current() == '_' || Character.isLetterOrDigit(scanner.current()));
 
-                current = new Word(sb.toString());
+                current = new Word(line, column, sb.toString());
                 return;
             }
 
-            current = new InvalidToken(Character.toString(scanner.current()));
+            current = new InvalidToken(line, column, Character.toString(scanner.current()));
             scanner.skip();
         }
     }
 
-    private Symbol parseSymbol() throws IOException {
+    private Symbol parseSymbol(int line, int column) throws IOException {
         final var c = scanner.current();
 
         final var s = switch (c) {
-            case '(' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.LeftParenthesis); }
-            case ')' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.RightParenthesis); }
-            case '{' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.LeftCurlyBracket); }
-            case '}' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.RightCurlyBracket); }
-            case '[' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.LeftSquareBracket); }
-            case ']' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.RightSquareBracket); }
-            case '.' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Dot); }
-            case '*' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Asterisk); }
-            case '/' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Slash); }
-            case '@' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.At); }
-            case '>' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.GreaterThan); }
-            case '<' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.SmallerThan); }
-            case '!' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Exclamation); }
-            case ',' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Comma); }
-            case '+' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Plus); }
-            case '-' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Minus); }
-            case ';' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Semicolon); }
-            case '|' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Pipe); }
-            case '&' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Ampersand); }
+            case '(' -> { scanner.skip(); yield new Symbol(line, column, Symbol.SymbolType.LeftParenthesis); }
+            case ')' -> { scanner.skip(); yield new Symbol(line, column, Symbol.SymbolType.RightParenthesis); }
+            case '{' -> { scanner.skip(); yield new Symbol(line, column, Symbol.SymbolType.LeftCurlyBracket); }
+            case '}' -> { scanner.skip(); yield new Symbol(line, column, Symbol.SymbolType.RightCurlyBracket); }
+            case '[' -> { scanner.skip(); yield new Symbol(line, column, Symbol.SymbolType.LeftSquareBracket); }
+            case ']' -> { scanner.skip(); yield new Symbol(line, column, Symbol.SymbolType.RightSquareBracket); }
+            case '.' -> { scanner.skip(); yield new Symbol(line, column, Symbol.SymbolType.Dot); }
+            case '*' -> { scanner.skip(); yield new Symbol(line, column, Symbol.SymbolType.Asterisk); }
+            case '/' -> { scanner.skip(); yield new Symbol(line, column,  Symbol.SymbolType.Slash); }
+            case '@' -> { scanner.skip(); yield new Symbol(line, column, Symbol.SymbolType.At); }
+            case '>' -> { scanner.skip(); yield new Symbol(line, column, Symbol.SymbolType.GreaterThan); }
+            case '<' -> { scanner.skip(); yield new Symbol(line, column, Symbol.SymbolType.SmallerThan); }
+            case '!' -> { scanner.skip(); yield new Symbol(line, column, Symbol.SymbolType.Exclamation); }
+            case ',' -> { scanner.skip(); yield new Symbol(line, column, Symbol.SymbolType.Comma); }
+            case '+' -> { scanner.skip(); yield new Symbol(line, column, Symbol.SymbolType.Plus); }
+            case '-' -> { scanner.skip(); yield new Symbol(line, column, Symbol.SymbolType.Minus); }
+            case ';' -> { scanner.skip(); yield new Symbol(line, column, Symbol.SymbolType.Semicolon); }
+            case '|' -> { scanner.skip(); yield new Symbol(line, column,  Symbol.SymbolType.Pipe); }
+            case '&' -> { scanner.skip(); yield new Symbol(line, column, Symbol.SymbolType.Ampersand); }
             case ':' -> { // ":", ":=" and "=" are all valid, also like this: "<<", ">>" "?:", "<=", ">", "!=", "++", "--"
                 scanner.skip();
                 final var c2 = scanner.current();
                 yield switch (c2) {
                     case '=' -> {
                         scanner.skip();
-                        yield new Symbol(Symbol.SymbolType.Becomes);
+                        yield new Symbol(line, column, Symbol.SymbolType.Becomes);
                     }
-                    default -> new Symbol(Symbol.SymbolType.Colon);
+                    default -> new Symbol(line, column, Symbol.SymbolType.Colon);
                 };
             }
             case '=' -> { // "=", "==" and "===" are all valid (like <<=, >>=)
@@ -174,12 +177,12 @@ public class Scanner implements AutoCloseable{
                         yield switch (c3) {
                             case '=' -> {
                                 scanner.skip();
-                                yield new Symbol(Symbol.SymbolType.EqualsEqualsEquals);
+                                yield new Symbol(line, column, Symbol.SymbolType.EqualsEqualsEquals);
                             }
-                            default -> new Symbol(Symbol.SymbolType.EqualsEquals);
+                            default -> new Symbol(line, column, Symbol.SymbolType.EqualsEquals);
                         };
                     }
-                    default -> new Symbol(Symbol.SymbolType.Equals);
+                    default -> new Symbol(line, column, Symbol.SymbolType.Equals);
                 };            }
             default -> null;
         };

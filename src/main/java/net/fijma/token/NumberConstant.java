@@ -4,7 +4,8 @@ public class NumberConstant extends Token {
 
     private final String value;
 
-    public NumberConstant(String value) {
+    public NumberConstant(int line, int column, String value) {
+        super(line, column);
         this.value = value;
     }
 
@@ -12,6 +13,6 @@ public class NumberConstant extends Token {
 
     @Override
     public String toString() {
-        return "Number(%s)".formatted(value);
+        return "Number(%s)".formatted(value) + super.toString();
     }
 }

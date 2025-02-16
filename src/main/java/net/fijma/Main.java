@@ -6,7 +6,6 @@ import net.fijma.token.NewLine;
 public class Main {
 
     static boolean first;
-    static boolean any;
     static boolean isTTY = System.console() != null;
 
     private static void prompt() {
@@ -15,7 +14,6 @@ public class Main {
             System.out.flush();
         }
         first = true;
-        any = false;
     }
 
     public static void main(String[] args) {
@@ -26,21 +24,22 @@ public class Main {
             boolean done = false;
 
             while (!done) {
+                if (!first) {
+                    System.out.print(" ");
+                }
                 switch (t.current()) {
-                    case EndOfProgram ignored -> done = true;
+                    case EndOfProgram ignored -> {
+                        System.out.print("EOF(" + t.current().line() + ":" + t.current().column() + ")" + "\n");
+                        done = true;
+                    }
                     case NewLine ignored -> {
-                        if (any) {
-                            System.out.print("\n");
-                        }
+                        System.out.print("EOL(" + t.current().line() + ":" + t.current().column() + ")" + "\n");
                         prompt();
                     }
                     default -> {
-                        if (!first) {
-                            System.out.print(" ");
-                        }
                         first = false;
                         System.out.print(t.current());
-                        any = true;
+                        System.out.print("(" + t.current().line() + ":" + t.current().column() + ")");
                     }
                 }
 

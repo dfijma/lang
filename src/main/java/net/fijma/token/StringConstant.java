@@ -3,7 +3,8 @@ package net.fijma.token;
 public class StringConstant extends Token {
     private final String value;
 
-    public StringConstant(String value) {
+    public StringConstant(int line, int column, String value) {
+        super(line, column);
         this.value = value;
     }
 
@@ -11,6 +12,6 @@ public class StringConstant extends Token {
 
     @Override
     public String toString() {
-        return "StringConstant(%s)".formatted(value);
+        return "StringConstant(%s)".formatted(value) + super.toString();
     }
 }

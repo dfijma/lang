@@ -31,12 +31,13 @@ public class Symbol extends Token {
 
     public final SymbolType type;
 
-    public Symbol(SymbolType type) {
+    public Symbol(int line, int column, SymbolType type) {
+        super(line, column);
         this.type = type;
     }
 
     @Override
     public String toString() {
-        return type.toString();
+        return type.toString() + super.toString();
     }
 }

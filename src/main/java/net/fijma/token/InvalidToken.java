@@ -4,7 +4,8 @@ public class InvalidToken extends Token {
 
     private final String value;
 
-    public InvalidToken(String value) {
+    public InvalidToken(int line, int column, String value) {
+        super(line, column);
         this.value = value;
     }
 
@@ -12,6 +13,6 @@ public class InvalidToken extends Token {
 
     @Override
     public String toString() {
-        return "InvalidToken(%s)".formatted(value);
+        return "InvalidToken(%s)".formatted(value) + super.toString();
     }
 }
