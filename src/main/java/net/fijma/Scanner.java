@@ -1,7 +1,7 @@
 package net.fijma;
 
 import net.fijma.token.*;
-import net.fijma.token.Number;
+import net.fijma.token.NumberConstant;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -65,9 +65,9 @@ public class Scanner implements AutoCloseable{
 
                 final String value = sb.toString();
                 if (dots == 0) {
-                    current = new net.fijma.token.Number(value);
+                    current = new NumberConstant(value);
                 } else if (dots == 1 && value.lastIndexOf('.') != value.length()-1) {
-                    current = new Number(value);
+                    current = new NumberConstant(value);
                 } else {
                     current = new InvalidToken("invalid number: %s".formatted(value));
                 }
@@ -141,7 +141,7 @@ public class Scanner implements AutoCloseable{
             case '[' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.LeftSquareBracket); }
             case ']' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.RightSquareBracket); }
             case '.' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Dot); }
-            case '*' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Star); }
+            case '*' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Asterisk); }
             case '/' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.Slash); }
             case '@' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.At); }
             case '>' -> { scanner.skip(); yield new Symbol(Symbol.SymbolType.GreaterThan); }

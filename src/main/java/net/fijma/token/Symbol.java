@@ -19,7 +19,7 @@ public class Symbol extends Token {
         Minus,
         Becomes,
         Slash,
-        Star,
+        Asterisk,
         Colon,
         Equals,
         EqualsEquals,

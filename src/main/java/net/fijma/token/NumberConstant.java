@@ -1,10 +1,10 @@
 package net.fijma.token;
 
-public class Number extends Token {
+public class NumberConstant extends Token {
 
     private final String value;
 
-    public Number(String value) {
+    public NumberConstant(String value) {
         this.value = value;
     }
 
