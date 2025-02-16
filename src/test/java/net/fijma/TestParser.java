@@ -70,4 +70,32 @@ public class TestParser {
         test("end of program terminates", "16\013", "16");
         test("terminated by just end of program", "10;13\0", "13");
     }
+
+    @Test
+    public void testUnit() {
+        testUnit("aa", "\n1111  ;  2222\n\n3333\n\n4444", "4444");
+        testUnit("aa", "\n1111;2222\n\naaaa\n\n4444", "4444");
+        testUnit("aaa", "a\n33 22;", null);
+    }
+
+    public void testUnit(String reason, String input, String expected) {
+        final ByteArrayInputStream bais = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
+        try (Scanner t = Scanner.create(bais)) {
+            final Parser parser = Parser.create(t);
+            while (true) {
+                final Unit unit = parser.parseUnit();
+                t.skip();
+                System.out.println(unit);
+                if (unit.isLast()) {
+                    assertThat(reason, unit.expressions().isPresent(), is(expected != null));
+                    if (expected != null) {
+                        assertThat("last", unit.expressions().get().getLast().toString(), is(expected));
+                    }
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 }

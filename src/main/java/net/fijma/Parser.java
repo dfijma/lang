@@ -3,10 +3,7 @@ package net.fijma;
 import net.fijma.token.*;
 
 import java.io.IOException;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 public class Parser {
 
@@ -19,6 +16,36 @@ public class Parser {
     static Optional<List<Expression>> parse(Scanner scanner) throws IOException {
         final var parser = new Parser(scanner);
         return parser.parseProgram();
+    }
+
+    static Parser create(Scanner scanner) throws IOException {
+        return new Parser(scanner);
+    }
+
+    public Unit parseUnit() throws IOException {
+
+        final List<Expression> result = new ArrayList<>();
+
+        while (true) {
+
+            if (scanner.current() instanceof NewLine || scanner.current() instanceof EndOfProgram) {
+                return new Unit(scanner.current() instanceof EndOfProgram, Optional.of(result));
+            }
+
+            final var expression = parseExpression();
+            if (expression.isEmpty()) break;
+
+            final var semicolon = parseSymbol(Symbol.SymbolType.Semicolon);
+            if (semicolon.isPresent() || (scanner.current() instanceof NewLine || scanner.current() instanceof EndOfProgram)) {
+                result.addLast(expression.get());
+            } else break;
+
+        }
+
+        while (!(scanner.current() instanceof NewLine || scanner.current() instanceof EndOfProgram)) {
+            scanner.skip();
+        }
+        return new Unit(scanner.current() instanceof EndOfProgram, Optional.empty());
     }
 
     // expression_list <- <NL>* expression [; or <NL> or both] [expression_list]
