@@ -46,14 +46,14 @@ public class TestParser {
         final ByteArrayInputStream bais = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
         try (Scanner t = Scanner.create(bais)) {
             Parser parser = Parser.create(t);
-            final Optional<List<Expression>> expressionList = parser.parseProgram();
-            assertThat(reason, expressionList.isPresent(), is(expected != null));
+            final Unit result = parser.parseProgram();
+            assertThat(reason, result.isError(), is(expected == null));
             if (expected != null) {
-                if (expressionList.isEmpty()) {
+                if (result.value().isEmpty()) {
                     throw new AssertionError(reason);
                 }
-                System.out.println(expressionList.get());
-                assertThat(reason, expressionList.get().getLast().toString(), is(expected));
+                System.out.println(result.value());
+                assertThat(reason, result.value().getLast().toString(), is(expected));
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -88,9 +88,9 @@ public class TestParser {
                 t.skip();
                 System.out.println(unit);
                 if (unit.isLast()) {
-                    assertThat(reason, unit.expressions().isPresent(), is(expected != null));
+                    assertThat(reason, unit.isError(), is(expected == null));
                     if (expected != null) {
-                        assertThat("last", unit.expressions().get().getLast().toString(), is(expected));
+                        assertThat("last", unit.value().getLast().toString(), is(expected));
                     }
                     break;
                 }

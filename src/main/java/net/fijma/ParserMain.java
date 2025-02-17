@@ -32,10 +32,13 @@ public class ParserMain {
     private static void parseUnits(Parser parser, Scanner t) throws IOException {
         while (true) {
             final Unit unit = parser.parseUnit();
-            if (unit.expressions().isEmpty()) {
-                System.out.println("syntax error");
-            } else if (!unit.expressions().get().isEmpty()) {
-                System.out.println(unit.expressions().get());
+            if (unit.isError()) {
+                System.out.println("syntax error: " + unit.errorMessage());
+            } else if (!unit.value().isEmpty()) {
+                System.out.println(unit.value());
+                for (Expression expression : unit.value()) {
+                    System.out.println(expression.eval());
+                }
             }
             if (unit.isLast()) break;
             prompt();
@@ -44,13 +47,13 @@ public class ParserMain {
     }
 
     private static void parseProgram(Parser parser) throws IOException {
-        final Optional<List<Expression>> result = parser.parseProgram();
-        if (result.isPresent()) {
-            for (Expression expr : result.get()) {
+        final Unit result = parser.parseProgram();
+        if (!result.isError()) {
+            for (Expression expr : result.value()) {
                 System.out.println(expr);
             }
         } else {
-            System.out.println("syntax error");
+            System.out.println(result.errorMessage());
             System.exit(1);
         }
     }

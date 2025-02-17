@@ -15,4 +15,7 @@ public class NumberConstant extends Token {
     public String toString() {
         return "Number(%s)".formatted(value) + super.toString();
     }
+
+    @Override
+    public String format() { return value; }
 }

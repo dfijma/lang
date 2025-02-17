@@ -1,6 +1,7 @@
 package net.fijma.token;
 
 public abstract class Token {
+
     private final int line;
     private final int column;
 
@@ -16,4 +17,6 @@ public abstract class Token {
     public String toString() {
         return "";
     }
+
+    public String format() { return toString(); }
 }
