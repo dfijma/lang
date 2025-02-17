@@ -21,147 +21,135 @@ public class Parser {
 
         final List<Expression> result = new ArrayList<>();
 
+        String error;
+
         while (true) {
 
             if (scanner.current() instanceof NewLine || scanner.current() instanceof EndOfProgram) {
-                return new Unit(scanner.current() instanceof EndOfProgram, Optional.of(result));
+                return new Unit(scanner.current() instanceof EndOfProgram, result);
             }
 
             final var expression = parseExpression();
-            if (expression.isEmpty()) break;
+            if (expression.isError()) {
+                error = expression.error();
+                break;
+            }
 
             final var semicolon = parseSymbol(Symbol.SymbolType.Semicolon);
-            if (semicolon.isPresent() || (scanner.current() instanceof NewLine || scanner.current() instanceof EndOfProgram)) {
-                result.addLast(expression.get());
-            } else break;
+            if (semicolon.isSuccess() || (scanner.current() instanceof NewLine || scanner.current() instanceof EndOfProgram)) {
+                result.addLast(expression.value());
+            } else {
+                error = semicolon.error();
+                break;
+            }
 
         }
 
         while (!(scanner.current() instanceof NewLine || scanner.current() instanceof EndOfProgram)) {
             scanner.skip();
         }
-        return new Unit(scanner.current() instanceof EndOfProgram, Optional.empty());
+        return new Unit(scanner.current() instanceof EndOfProgram, error);
     }
 
-    public Optional<List<Expression>> parseProgram() throws IOException {
+    public Unit parseProgram() throws IOException {
         List<Expression> result = new LinkedList<>();
         while (true) {
             final Unit unit = parseUnit();
-            if (unit.expressions().isPresent()) {
-                result.addAll(unit.expressions().get());
+            if (!unit.isError()) {
+                result.addAll(unit.value());
             } else {
-                return Optional.empty();
+                return unit;
             }
             if (unit.isLast()) break;
             scanner.skip();
         }
-        return Optional.of(result);
+        return new Unit(true, result);
     }
 
     // expression <- term [ additive-operator expression]
-    private Optional<Expression> parseExpression() throws IOException {
+    private ParseResult<Expression> parseExpression() throws IOException {
 
-        final Optional<Expression> term = parseTerm();
-        if (term.isEmpty()) { return Optional.empty(); }
+        final ParseResult<Expression> term = parseTerm();
+        if (term.isError()) { return term; }
 
-        final Optional<Symbol> operator = parseSymbol(Set.of(Symbol.SymbolType.Plus, Symbol.SymbolType.Minus));
-        if (operator.isEmpty()) { return term; }
+        final ParseResult<Symbol> operator = parseSymbol(Set.of(Symbol.SymbolType.Plus, Symbol.SymbolType.Minus));
+        if (operator.isError()) { return term; }
 
-        final Optional<Expression> expression = parseExpression();
-        if (expression.isPresent()) {
-            return Optional.of(new BinaryExpression(term.get(), operator.get(), expression.get()));
+        final ParseResult<Expression> expression = parseExpression();
+        if (expression.isSuccess()) {
+            return ParseResult.success(new BinaryExpression(term.value(), operator.value(), expression.value()));
         } else {
-            return Optional.empty();
+            return expression;
         }
     }
 
-
     // term <- factor [ multiplicative-operator term]
-    private Optional<Expression> parseTerm() throws IOException {
+    private ParseResult<Expression> parseTerm() throws IOException {
 
-        final Optional<Expression> factor = parseFactor();
-        if (factor.isEmpty()) { return Optional.empty(); }
+        final ParseResult<Expression> factor = parseFactor();
+        if (factor.isError()) { return factor; }
 
-        final Optional<Symbol> operator = parseSymbol(Set.of(Symbol.SymbolType.Asterisk, Symbol.SymbolType.Slash));
-        if (operator.isEmpty()) { return factor; }
+        final ParseResult<Symbol> operator = parseSymbol(Set.of(Symbol.SymbolType.Asterisk, Symbol.SymbolType.Slash));
+        if (operator.isError()) { return factor; }
 
-        final Optional<Expression> term = parseTerm();
-        if (term.isPresent()) {
-            return Optional.of(new BinaryExpression(factor.get(), operator.get(), term.get()));
+        final ParseResult<Expression> term = parseTerm();
+        if (term.isSuccess()) {
+            return ParseResult.success(new BinaryExpression(factor.value, operator.value(), term.value));
         } else {
-            return Optional.empty();
+            return term;
         }
     }
 
     // factor <- number | ( expression)
-    private Optional<Expression> parseFactor() throws IOException {
+    private ParseResult<Expression> parseFactor() throws IOException {
 
-        final Optional<Expression> number = parseNumber();
-        if (number.isPresent()) return number;
+        final ParseResult<Expression> number = parseNumber();
+        if (number.isSuccess()) return number;
 
-        if (parseSymbol(Symbol.SymbolType.LeftParenthesis).isPresent()) {
-            final Optional<Expression> expression = parseExpression();
-            if (parseSymbol(Symbol.SymbolType.RightParenthesis).isPresent()) {
+        if (parseSymbol(Symbol.SymbolType.LeftParenthesis).isSuccess()) {
+            final ParseResult<Expression> expression = parseExpression();
+            if (expression.isError()) { return expression; }
+
+            if (parseSymbol(Symbol.SymbolType.RightParenthesis).isSuccess()) {
                 return expression;
             }
-            return Optional.empty();
+            return ParseResult.error("missing )");
         }
 
-        return Optional.empty();
+        if (!number.isGenericError()) return number;
+        return ParseResult.error("invalid expression");
     }
 
-    private Optional<Symbol> parseSymbol(Set<Symbol.SymbolType> expectedSymbols) throws IOException {
+    private ParseResult<Symbol> parseSymbol(Set<Symbol.SymbolType> expectedSymbols) throws IOException {
         return switch (scanner.current()) {
             case Symbol symbol when expectedSymbols.contains(symbol.type) -> {
                 scanner.skip();
-                yield Optional.of(symbol);
+                yield ParseResult.success(symbol);
             }
-            default -> Optional.empty();
+            default -> ParseResult.error("unexpected token: '" + scanner.current().format() + "'");
         };
     }
 
-    private Optional<Token> parseNewLine() throws IOException {
-        final var current = scanner.current();
-        return switch (current) {
-            case NewLine ignored -> {
-                scanner.skip();
-                yield Optional.of(current);
-            }
-            default -> Optional.empty();
-        };
-    }
-
-    private Optional<Token> parseEndOfProgram() throws IOException {
-        final var current = scanner.current();
-        return switch (current) {
-            case EndOfProgram ignored -> Optional.of(current);
-            default -> Optional.empty();
-        };
-    }
-
-    private <T extends Token> Optional<Token> parseToken(Class<T> tokenClass) throws IOException {
-        final var current = scanner.current();
-        if (tokenClass.isInstance(current)) {
-            scanner.skip();
-            return Optional.of(current);
-        }
-        return Optional.empty();
-    }
-
-
-    private Optional<Symbol> parseSymbol(Symbol.SymbolType expectedSymbol) throws IOException {
+    private ParseResult<Symbol> parseSymbol(Symbol.SymbolType expectedSymbol) throws IOException {
         return parseSymbol(Set.of(expectedSymbol));
     }
 
-    private Optional<Expression> parseNumber() throws IOException {
+    private ParseResult<Expression> parseNumber() throws IOException {
+        final var minus = parseSymbol(Symbol.SymbolType.Minus);
+
         final var token = scanner.current();
         if (token instanceof NumberConstant number) {
             scanner.skip();
-            return Optional.of(new LiteralExpression(Integer.parseInt(number.value())));
+            if (number.value().contains(".")) {
+                return ParseResult.error("floating point number not (yet) supported");
+            };
+            try {
+                return ParseResult.success(new IntValue((minus.isSuccess() ? -1 : 1) * Integer.parseInt(number.value())));
+            } catch (NumberFormatException e) {
+                return ParseResult.error("invalid number (number too big?)");
+            }
         }
-        return Optional.empty();
+        return ParseResult.genericError();
     }
 
-
 }
-
