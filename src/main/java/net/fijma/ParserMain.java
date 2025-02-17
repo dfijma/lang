@@ -33,7 +33,7 @@ public class ParserMain {
         while (true) {
             final Unit unit = parser.parseUnit();
             if (unit.isError()) {
-                System.out.println("syntax error: " + unit.errorMessage());
+                System.out.println("syntax error (position %d): %s".formatted(unit.token.column(), unit.errorMessage()));
             } else if (!unit.value().isEmpty()) {
                 System.out.println(unit.value());
                 for (Expression expression : unit.value()) {
@@ -53,7 +53,7 @@ public class ParserMain {
                 System.out.println(expr);
             }
         } else {
-            System.out.println(result.errorMessage());
+            System.out.println("syntax error (line %d, column %d): %s".formatted(result.token.line(), result.token.column(), result.errorMessage()));
             System.exit(1);
         }
     }

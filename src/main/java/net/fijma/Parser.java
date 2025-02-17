@@ -22,6 +22,7 @@ public class Parser {
         final List<Expression> result = new ArrayList<>();
 
         String error;
+        Token token;
 
         while (true) {
 
@@ -29,12 +30,14 @@ public class Parser {
                 return new Unit(scanner.current() instanceof EndOfProgram, result);
             }
 
+            token = scanner.current();
             final var expression = parseExpression();
             if (expression.isError()) {
                 error = expression.error();
                 break;
             }
 
+            token = scanner.current();
             final var semicolon = parseSymbol(Symbol.SymbolType.Semicolon);
             if (semicolon.isSuccess() || (scanner.current() instanceof NewLine || scanner.current() instanceof EndOfProgram)) {
                 result.addLast(expression.value());
@@ -48,7 +51,7 @@ public class Parser {
         while (!(scanner.current() instanceof NewLine || scanner.current() instanceof EndOfProgram)) {
             scanner.skip();
         }
-        return new Unit(scanner.current() instanceof EndOfProgram, error);
+        return new Unit(scanner.current() instanceof EndOfProgram, token, error);
     }
 
     public Unit parseProgram() throws IOException {
@@ -113,11 +116,11 @@ public class Parser {
             if (parseSymbol(Symbol.SymbolType.RightParenthesis).isSuccess()) {
                 return expression;
             }
-            return ParseResult.error("missing )");
+            return ParseResult.error(scanner.current(), "missing )");
         }
 
         if (!number.isGenericError()) return number;
-        return ParseResult.error("invalid expression");
+        return ParseResult.error(scanner.current(), "invalid expression");
     }
 
     private ParseResult<Symbol> parseSymbol(Set<Symbol.SymbolType> expectedSymbols) throws IOException {
@@ -126,7 +129,7 @@ public class Parser {
                 scanner.skip();
                 yield ParseResult.success(symbol);
             }
-            default -> ParseResult.error("unexpected token: '" + scanner.current().format() + "'");
+            default -> ParseResult.error(scanner.current(), "unexpected token: '" + scanner.current().format() + "'");
         };
     }
 
@@ -141,15 +144,15 @@ public class Parser {
         if (token instanceof NumberConstant number) {
             scanner.skip();
             if (number.value().contains(".")) {
-                return ParseResult.error("floating point number not (yet) supported");
+                return ParseResult.error(token, "floating point number not (yet) supported");
             };
             try {
                 return ParseResult.success(new IntValue((minus.isSuccess() ? -1 : 1) * Integer.parseInt(number.value())));
             } catch (NumberFormatException e) {
-                return ParseResult.error("invalid number (number too big?)");
+                return ParseResult.error(token, "invalid number (number too big?)");
             }
         }
-        return ParseResult.genericError();
+        return ParseResult.genericError(token);
     }
 
 }

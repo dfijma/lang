@@ -1,25 +1,29 @@
 package net.fijma;
 
+import net.fijma.token.Token;
+
 public class ParseResult<T> {
 
     final T value;
     final String error;
+    final Token token;
 
-    ParseResult(T value, String error) {
+    ParseResult(T value,Token token, String error) {
         this.value = value;
+        this.token = token;
         this.error = error;
     }
 
     public static <T> ParseResult<T> success(T result) {
-        return new ParseResult<T>(result, null);
+        return new ParseResult<T>(result, null, null);
     }
 
-    public static <T> ParseResult<T> error(String error) {
-        return new ParseResult<T>(null, error);
+    public static <T> ParseResult<T> error(Token token, String error) {
+        return new ParseResult<T>(null, token, error);
     }
 
-    public static <T> ParseResult<T> genericError() {
-        return new ParseResult<T>(null, null);
+    public static <T> ParseResult<T> genericError(Token token) {
+        return new ParseResult<T>(null, token, null);
     }
 
     public T value() { return value; }
