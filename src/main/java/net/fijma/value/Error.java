@@ -1,4 +1,4 @@
-package net.fijma;
+package net.fijma.value;
 
 public class Error extends Value {
 
@@ -6,11 +6,6 @@ public class Error extends Value {
 
     public Error(String message) {
         this.message = message;
-    }
-
-    @Override
-    public Value eval() {
-        return this;
     }
 
     @Override

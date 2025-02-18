@@ -1,6 +1,6 @@
-package net.fijma;
+package net.fijma.value;
 
-public class IntValue extends Expression {
+public class IntValue extends Value {
 
     int value;
 
@@ -9,9 +9,6 @@ public class IntValue extends Expression {
     }
 
     public int value() { return value; }
-
-    @Override
-    public Value eval() { return this; }
 
     @Override
     public String toString() {

@@ -1,11 +1,10 @@
 package net.fijma;
 
+import net.fijma.parsetree.Unit;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Optional;
 
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -77,6 +76,12 @@ public class TestParser {
         testUnit("aa", "\n1111  ;  2222\n\n3333\n\n4444", "4444");
         testUnit("aa", "\n1111;2222\n\naaaa\n\n4444", "4444");
         testUnit("aaa", "a\n33 22;", null);
+    }
+
+    @Test
+    public void testLet() {
+        testUnit("let y = 1 + 1", "let y = 1 + 1", "Let(Identifier(y),Plus(1,1))");
+        testUnit("let with invalid expression", "let y = 1 + ", null);
     }
 
     public void testUnit(String reason, String input, String expected) {

@@ -1,16 +1,15 @@
-package net.fijma;
+package net.fijma.parsetree;
 
 import net.fijma.token.Token;
 
 import java.util.List;
-import java.util.Optional;
 
-public class Unit extends ParseResult<List<Expression>> {
+public class Unit extends ParseResult<List<Statement>> {
 
     private final boolean last;
 
-    public Unit(boolean last, List<Expression> expressions) {
-        super(expressions, null, null);
+    public Unit(boolean last, List<Statement> statements) {
+        super(statements, null, null);
         this.last = last;
     }
 

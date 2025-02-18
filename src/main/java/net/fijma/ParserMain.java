@@ -1,8 +1,10 @@
 package net.fijma;
 
+import net.fijma.parsetree.Expression;
+import net.fijma.parsetree.Statement;
+import net.fijma.parsetree.Unit;
+
 import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
 
 public class ParserMain {
 
@@ -33,11 +35,20 @@ public class ParserMain {
         while (true) {
             final Unit unit = parser.parseUnit();
             if (unit.isError()) {
-                System.out.println("syntax error (position %d): %s".formatted(unit.token.column(), unit.errorMessage()));
+                System.out.println("syntax error (position %d): %s".formatted(unit.token().column(), unit.errorMessage()));
             } else if (!unit.value().isEmpty()) {
                 System.out.println(unit.value());
-                for (Expression expression : unit.value()) {
-                    System.out.println(expression.eval());
+                for (Statement statement : unit.value()) {
+                    if (statement instanceof Expression expression) {
+                        System.out.println(expression.eval());
+                    } else {
+                        try {
+                            statement.execute();
+                        } catch (RuntimeException e) {
+                            System.out.println("runtime error: " + e.getMessage());
+                        }
+
+                    }
                 }
             }
             if (unit.isLast()) break;
@@ -49,11 +60,19 @@ public class ParserMain {
     private static void parseProgram(Parser parser) throws IOException {
         final Unit result = parser.parseProgram();
         if (!result.isError()) {
-            for (Expression expr : result.value()) {
-                System.out.println(expr);
+            for (Statement statement : result.value()) {
+                if (statement instanceof Expression expression) {
+                    System.out.println(expression.eval());
+                } else {
+                    try {
+                        statement.execute();
+                    } catch (RuntimeException e) {
+                        System.out.println("runtime error: " + e.getMessage());
+                    }
+                }
             }
         } else {
-            System.out.println("syntax error (line %d, column %d): %s".formatted(result.token.line(), result.token.column(), result.errorMessage()));
+            System.out.println("syntax error (line %d, column %d): %s".formatted(result.token().line(), result.token().column(), result.errorMessage()));
             System.exit(1);
         }
     }

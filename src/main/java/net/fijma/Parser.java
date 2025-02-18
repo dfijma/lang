@@ -1,5 +1,6 @@
 package net.fijma;
 
+import net.fijma.parsetree.*;
 import net.fijma.token.*;
 
 import java.io.IOException;
@@ -19,7 +20,7 @@ public class Parser {
 
     public Unit parseUnit() throws IOException {
 
-        final List<Expression> result = new ArrayList<>();
+        final List<Statement> result = new ArrayList<>();
 
         String error;
         Token token;
@@ -30,18 +31,18 @@ public class Parser {
                 return new Unit(scanner.current() instanceof EndOfProgram, result);
             }
 
-            token = scanner.current();
-            final var expression = parseExpression();
-            if (expression.isError()) {
-                error = expression.error();
+            final var statementOrExpression = parseStatementOrExpression();
+            if (statementOrExpression.isError()) {
+                token = statementOrExpression.token();
+                error = statementOrExpression.error();
                 break;
             }
 
-            token = scanner.current();
             final var semicolon = parseSymbol(Symbol.SymbolType.Semicolon);
             if (semicolon.isSuccess() || (scanner.current() instanceof NewLine || scanner.current() instanceof EndOfProgram)) {
-                result.addLast(expression.value());
+                result.addLast(statementOrExpression.value());
             } else {
+                token = statementOrExpression.token();
                 error = semicolon.error();
                 break;
             }
@@ -55,7 +56,7 @@ public class Parser {
     }
 
     public Unit parseProgram() throws IOException {
-        List<Expression> result = new LinkedList<>();
+        List<Statement> result = new LinkedList<>();
         while (true) {
             final Unit unit = parseUnit();
             if (!unit.isError()) {
@@ -69,7 +70,20 @@ public class Parser {
         return new Unit(true, result);
     }
 
-    // expression <- term [ additive-operator expression]
+    private ParseResult<? extends Statement> parseStatementOrExpression() throws IOException {
+        final var statement = parseStatement();
+        if (statement.isSuccess() || (statement.isError() && !statement.isGenericError())) { return statement;}
+        return parseExpression();
+    }
+
+    private ParseResult<Statement> parseStatement() throws IOException {
+        final ParseResult<Statement> let = parseLetStatement();
+        if (let.isSuccess() || (let.isError() && !let.isGenericError())) { return let;}
+
+        return ParseResult.genericError(scanner.current());
+    }
+
+    // expression <- term [ additive-operator expression] | let x = expression |
     private ParseResult<Expression> parseExpression() throws IOException {
 
         final ParseResult<Expression> term = parseTerm();
@@ -86,6 +100,22 @@ public class Parser {
         }
     }
 
+    private ParseResult<Statement> parseLetStatement() throws IOException {
+        final var let = parseReservedWord("let");
+        if (let.isError()) return ParseResult.genericError(let.token());
+
+        final ParseResult<Expression> variable = parseIdentifier();
+        if (variable.isError()) return ParseResult.error(variable.token(), "identifier expected");
+
+        final var is = parseSymbol(Set.of(Symbol.SymbolType.Equals));
+        if (is.isError()) return ParseResult.error(is.token(), is.error());
+
+        final var expression = parseExpression();
+        if (expression.isError()) return ParseResult.error(expression.token(), expression.error());
+
+        return ParseResult.success(new LetStatement((Identifier)(variable.value()), expression.value()));
+    }
+
     // term <- factor [ multiplicative-operator term]
     private ParseResult<Expression> parseTerm() throws IOException {
 
@@ -97,7 +127,7 @@ public class Parser {
 
         final ParseResult<Expression> term = parseTerm();
         if (term.isSuccess()) {
-            return ParseResult.success(new BinaryExpression(factor.value, operator.value(), term.value));
+            return ParseResult.success(new BinaryExpression(factor.value(), operator.value(), term.value()));
         } else {
             return term;
         }
@@ -108,6 +138,9 @@ public class Parser {
 
         final ParseResult<Expression> number = parseNumber();
         if (number.isSuccess()) return number;
+
+        final ParseResult<Expression> identifier = parseIdentifier();
+        if (identifier.isSuccess()) return identifier;
 
         if (parseSymbol(Symbol.SymbolType.LeftParenthesis).isSuccess()) {
             final ParseResult<Expression> expression = parseExpression();
@@ -137,6 +170,16 @@ public class Parser {
         return parseSymbol(Set.of(expectedSymbol));
     }
 
+    private ParseResult<Word> parseReservedWord(String word) throws IOException {
+        return switch (scanner.current()) {
+            case Word w when w.value().equals(word) -> {
+                scanner.skip();
+                yield ParseResult.success(w);
+            }
+            default -> ParseResult.error(scanner.current(), "unexpected token: '" + scanner.current().format() + "'");
+        };
+    }
+
     private ParseResult<Expression> parseNumber() throws IOException {
         final var minus = parseSymbol(Symbol.SymbolType.Minus);
 
@@ -147,10 +190,22 @@ public class Parser {
                 return ParseResult.error(token, "floating point number not (yet) supported");
             };
             try {
-                return ParseResult.success(new IntValue((minus.isSuccess() ? -1 : 1) * Integer.parseInt(number.value())));
+                return ParseResult.success(new IntConstant((minus.isSuccess() ? -1 : 1) * Integer.parseInt(number.value())));
             } catch (NumberFormatException e) {
                 return ParseResult.error(token, "invalid number (number too big?)");
             }
+        }
+        return ParseResult.genericError(token);
+    }
+
+    private ParseResult<Expression> parseIdentifier() throws IOException {
+        final var token = scanner.current();
+        if (token instanceof Word word) {
+            scanner.skip();
+            if (word.isReserved()) {
+                return ParseResult.error(token, "identifier expected");
+            }
+            return ParseResult.success(new Identifier(word.value()));
         }
         return ParseResult.genericError(token);
     }

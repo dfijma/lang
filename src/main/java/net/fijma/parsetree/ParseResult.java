@@ -1,4 +1,4 @@
-package net.fijma;
+package net.fijma.parsetree;
 
 import net.fijma.token.Token;
 
@@ -28,6 +28,8 @@ public class ParseResult<T> {
 
     public T value() { return value; }
     public String error() { return error; }
+    public Token token() { return token; }
+
     public boolean isError() { return value == null; }
     public boolean isGenericError() { return value == null  && error == null; }
     public boolean isSuccess() { return value != null; }

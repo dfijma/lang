@@ -1,5 +1,8 @@
-package net.fijma;
+package net.fijma.parsetree;
 
+import net.fijma.value.Error;
+import net.fijma.value.IntValue;
+import net.fijma.value.Value;
 import net.fijma.token.Symbol;
 
 public class BinaryExpression extends Expression {
@@ -22,12 +25,12 @@ public class BinaryExpression extends Expression {
         if (leftVal instanceof IntValue leftIntVal && rightVal instanceof IntValue rightIntVal) {
 
             return switch (operator.type) {
-                case Symbol.SymbolType.Plus -> new IntValue(leftIntVal.value() + rightIntVal.value);
-                case Symbol.SymbolType.Minus -> new IntValue(leftIntVal.value() - rightIntVal.value);
-                case Symbol.SymbolType.Asterisk -> new IntValue(leftIntVal.value() * rightIntVal.value);
+                case Symbol.SymbolType.Plus -> new IntValue(leftIntVal.value() + rightIntVal.value());
+                case Symbol.SymbolType.Minus -> new IntValue(leftIntVal.value() - rightIntVal.value());
+                case Symbol.SymbolType.Asterisk -> new IntValue(leftIntVal.value() * rightIntVal.value());
                 case Symbol.SymbolType.Slash -> {
-                    if (rightIntVal.value != 0) {
-                        yield new IntValue(leftIntVal.value() / rightIntVal.value);
+                    if (rightIntVal.value() != 0) {
+                        yield new IntValue(leftIntVal.value() / rightIntVal.value());
                     } else {
                         yield new Error("division by zero");
                     }

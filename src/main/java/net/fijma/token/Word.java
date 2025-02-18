@@ -1,5 +1,8 @@
 package net.fijma.token;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class Word extends Token{
 
     private final String value;
@@ -10,6 +13,18 @@ public class Word extends Token{
     }
 
     public String value() { return value; }
+
+    private static final Set<String> reserved;
+
+    static {
+        reserved = new HashSet<>();
+        reserved.add("let");
+        reserved.add("var");
+    }
+
+    public boolean isReserved() {
+        return reserved.contains(value);
+    }
 
     @Override
     public String toString() {
