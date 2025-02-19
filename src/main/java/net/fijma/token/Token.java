@@ -13,6 +13,7 @@ public abstract class Token {
     public int line() { return line; }
     public int column() { return column; }
 
+
     @Override
     public String toString() {
         return "";

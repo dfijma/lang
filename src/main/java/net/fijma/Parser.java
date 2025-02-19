@@ -10,6 +10,11 @@ public class Parser {
 
     private final Scanner scanner;
 
+    List<Token> tokens;
+
+    Token currentToken() { return null; }
+    void skip() {}
+
     private Parser(Scanner scanner) {
         this.scanner = scanner;
     }
@@ -52,6 +57,7 @@ public class Parser {
         while (!(scanner.current() instanceof NewLine || scanner.current() instanceof EndOfProgram)) {
             scanner.skip();
         }
+
         return new Unit(scanner.current() instanceof EndOfProgram, token, error);
     }
 
@@ -80,7 +86,7 @@ public class Parser {
         final ParseResult<Statement> let = parseLetStatement();
         if (let.isSuccess() || (let.isError() && !let.isGenericError())) { return let;}
 
-        return ParseResult.genericError(scanner.current());
+        return ParseResult.genericError(currentToken());
     }
 
     // expression <- term [ additive-operator expression] | let x = expression |
@@ -133,7 +139,7 @@ public class Parser {
         }
     }
 
-    // factor <- number | ( expression)
+    // factor <- number | identifier | ( expression)
     private ParseResult<Expression> parseFactor() throws IOException {
 
         final ParseResult<Expression> number = parseNumber();
@@ -149,20 +155,21 @@ public class Parser {
             if (parseSymbol(Symbol.SymbolType.RightParenthesis).isSuccess()) {
                 return expression;
             }
-            return ParseResult.error(scanner.current(), "missing )");
+            return ParseResult.error(currentToken(), "missing )");
         }
 
         if (!number.isGenericError()) return number;
-        return ParseResult.error(scanner.current(), "invalid expression");
+        return ParseResult.error(currentToken(), "invalid expression");
     }
 
     private ParseResult<Symbol> parseSymbol(Set<Symbol.SymbolType> expectedSymbols) throws IOException {
-        return switch (scanner.current()) {
+        final var token = currentToken();
+        return switch (token) {
             case Symbol symbol when expectedSymbols.contains(symbol.type) -> {
-                scanner.skip();
+                skip();
                 yield ParseResult.success(symbol);
             }
-            default -> ParseResult.error(scanner.current(), "unexpected token: '" + scanner.current().format() + "'");
+            default -> ParseResult.error(token, "unexpected token: '" + token.format() + "'");
         };
     }
 
@@ -171,21 +178,22 @@ public class Parser {
     }
 
     private ParseResult<Word> parseReservedWord(String word) throws IOException {
-        return switch (scanner.current()) {
+        final var token = currentToken();
+        return switch (token) {
             case Word w when w.value().equals(word) -> {
-                scanner.skip();
+                skip();
                 yield ParseResult.success(w);
             }
-            default -> ParseResult.error(scanner.current(), "unexpected token: '" + scanner.current().format() + "'");
+            default -> ParseResult.error(token, "unexpected token: '" + token.format() + "'");
         };
     }
 
     private ParseResult<Expression> parseNumber() throws IOException {
         final var minus = parseSymbol(Symbol.SymbolType.Minus);
 
-        final var token = scanner.current();
+        final var token = currentToken();
         if (token instanceof NumberConstant number) {
-            scanner.skip();
+            skip();
             if (number.value().contains(".")) {
                 return ParseResult.error(token, "floating point number not (yet) supported");
             };
@@ -199,9 +207,9 @@ public class Parser {
     }
 
     private ParseResult<Expression> parseIdentifier() throws IOException {
-        final var token = scanner.current();
+        final var token = currentToken();
         if (token instanceof Word word) {
-            scanner.skip();
+            skip();
             if (word.isReserved()) {
                 return ParseResult.error(token, "identifier expected");
             }
