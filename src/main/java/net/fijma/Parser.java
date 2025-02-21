@@ -11,9 +11,19 @@ public class Parser {
     private final Scanner scanner;
 
     List<Token> tokens;
+    int currentToken = 0;
+    Optional<Token> currentToken() {
+        if (currentToken >= tokens.size())
+            return Optional.empty();
+        else {
+            return Optional.of(tokens.get(currentToken));
+        }
+    }
+    boolean currentTokenIsEndOfLine() { return currentToken == tokens.size() - 1; }
 
-    Token currentToken() { return null; }
-    void skip() {}
+    void skip() {
+        currentToken++;
+    }
 
     private Parser(Scanner scanner) {
         this.scanner = scanner;
@@ -27,40 +37,42 @@ public class Parser {
 
         final List<Statement> result = new ArrayList<>();
 
-        String error;
-        Token token;
+        String error = null;
+        Token errorToken = null;
 
-        while (true) {
+        tokens = scanner.next();
+        currentToken = 0;
+        if (tokens == null) { return null; }
 
-            if (scanner.current() instanceof NewLine || scanner.current() instanceof EndOfProgram) {
-                return new Unit(scanner.current() instanceof EndOfProgram, result);
-            }
+        while (currentToken() != null) {
 
             final var statementOrExpression = parseStatementOrExpression();
             if (statementOrExpression.isError()) {
-                token = statementOrExpression.token();
+                errorToken = statementOrExpression.token();
                 error = statementOrExpression.error();
                 break;
             }
 
             final var semicolon = parseSymbol(Symbol.SymbolType.Semicolon);
-            if (semicolon.isSuccess() || (scanner.current() instanceof NewLine || scanner.current() instanceof EndOfProgram)) {
+            if (semicolon.isSuccess() || (currentTokenIsEndOfLine() || currentToken() instanceof EndOfProgram)) {
                 result.addLast(statementOrExpression.value());
+                if (currentTokenIsEndOfLine()  || currentToken() instanceof EndOfProgram) {
+                    return new Unit(currentToken() instanceof EndOfProgram, result);
+                }
             } else {
-                token = statementOrExpression.token();
+                errorToken = statementOrExpression.token();
                 error = semicolon.error();
                 break;
             }
 
         }
 
-        while (!(scanner.current() instanceof NewLine || scanner.current() instanceof EndOfProgram)) {
-            scanner.skip();
-        }
+        if (errorToken == null || error == null) { throw new IllegalStateException("bug?"); }
 
-        return new Unit(scanner.current() instanceof EndOfProgram, token, error);
+        return new Unit(currentToken() instanceof EndOfProgram, errorToken, error);
     }
 
+    /*
     public Unit parseProgram() throws IOException {
         List<Statement> result = new LinkedList<>();
         while (true) {
@@ -75,6 +87,7 @@ public class Parser {
         }
         return new Unit(true, result);
     }
+     */
 
     private ParseResult<? extends Statement> parseStatementOrExpression() throws IOException {
         final var statement = parseStatement();
