@@ -93,6 +93,7 @@ public class TestParser {
         testUnit("let with invalid expression", "let y = 1 + ", 0, null);
     }
 
+
     public void testUnit(String reason, String input, int index, String expected) {
         final ByteArrayInputStream bais = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
         try (Scanner t = Scanner.create(bais)) {
@@ -113,5 +114,26 @@ public class TestParser {
             throw new RuntimeException(e);
         }
     }
+
+    @Test
+    public void testError() {
+        testError("let with invalid expression", "let y = 1 + \n", 0, null);
+        testError("let with invalid expression", "1 + 2 + \n", 0, null);
+    }
+
+    public void testError(String reason, String input, int index, String expected) {
+        final ByteArrayInputStream bais = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
+        try (Scanner t = Scanner.create(bais)) {
+            final Parser parser = Parser.create(t);
+            Unit unit = parser.parseUnit();
+            assertThat(reason, unit.isError(), is(true));
+            System.out.println(unit.error());
+            assertThat("expected statement", (unit.error()+","+unit.token().line()+"," + unit.token().column()), is(expected));
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 
 }

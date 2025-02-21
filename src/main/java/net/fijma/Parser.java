@@ -9,17 +9,32 @@ import java.util.*;
 public class Parser {
 
     private final Scanner scanner;
+    private final TokenLine tokenLine = new TokenLine();
 
-    List<Token> tokens;
-    int currentToken = 0;
-    Token currentToken() {
-        return tokens.get(currentToken);
-    }
-    boolean previousTokenLastOfLine() { return (currentToken -1) == tokens.size() - 2; }
+    private class TokenLine {
 
-    void skip() {
-        currentToken++;
+        private  List<Token> tokens;
+        int currentToken = 0;
+
+        public void next() throws IOException {
+            tokens = scanner.next();
+            tokens.addLast(new InvalidToken(-42, -42, "pseudo token to indicate the yet unknown next token")); // FIXME: ugly -42 by design
+            currentToken = 0;
+        }
+
+        public Token currentToken() {
+            return tokens.get(currentToken);
+        }
+
+        public boolean previousTokenLastOfLine() {
+            return (currentToken - 1) == tokens.size() - 2; // yah!
+        }
+
+        void skip() {
+            currentToken++;
+        }
     }
+
 
     private Parser(Scanner scanner) {
         this.scanner = scanner;
@@ -36,14 +51,13 @@ public class Parser {
         String error = null;
         Token errorToken = null;
 
-        tokens = scanner.next();
-        tokens.addLast(new InvalidToken(0, 0, "pseudo token to indicate the yet unknown next token"));
-        currentToken = 0;
-        if (previousTokenLastOfLine() || currentToken() instanceof EndOfProgram) {
-            return new Unit(currentToken() instanceof EndOfProgram, result);
+        tokenLine.next();
+
+        if (tokenLine.previousTokenLastOfLine() || tokenLine.currentToken() instanceof EndOfProgram) {
+            return new Unit(tokenLine.currentToken() instanceof EndOfProgram, result);
         }
 
-        while (currentToken() != null) {
+        while (tokenLine.currentToken() != null) {
 
             final var statementOrExpression = parseStatementOrExpression();
             if (statementOrExpression.isError()) {
@@ -53,10 +67,10 @@ public class Parser {
             }
 
             final var semicolon = parseSymbol(Symbol.SymbolType.Semicolon);
-            if (semicolon.isSuccess() || (previousTokenLastOfLine() || currentToken() instanceof EndOfProgram)) {
+            if (semicolon.isSuccess() || (tokenLine.previousTokenLastOfLine() || tokenLine.currentToken() instanceof EndOfProgram)) {
                 result.addLast(statementOrExpression.value());
-                if (previousTokenLastOfLine()  || currentToken() instanceof EndOfProgram) {
-                    return new Unit(currentToken() instanceof EndOfProgram, result);
+                if (tokenLine.previousTokenLastOfLine()  || tokenLine.currentToken() instanceof EndOfProgram) {
+                    return new Unit(tokenLine.currentToken() instanceof EndOfProgram, result);
                 }
             } else {
                 errorToken = semicolon.token();
@@ -68,7 +82,7 @@ public class Parser {
 
         if (errorToken == null || error == null) { throw new IllegalStateException("bug?"); }
 
-        return new Unit(currentToken() instanceof EndOfProgram, errorToken, error);
+        return new Unit(tokenLine.currentToken() instanceof EndOfProgram, errorToken, error);
     }
 
 
@@ -95,8 +109,7 @@ public class Parser {
     private ParseResult<Statement> parseStatement() throws IOException {
         final ParseResult<Statement> let = parseLetStatement();
         if (let.isSuccess() || (let.isError() && !let.isGenericError())) { return let;}
-
-        return ParseResult.genericError(currentToken());
+        return ParseResult.genericError(tokenLine.currentToken());
     }
 
     // expression <- term [ additive-operator expression] | let x = expression |
@@ -165,48 +178,48 @@ public class Parser {
             if (parseSymbol(Symbol.SymbolType.RightParenthesis).isSuccess()) {
                 return expression;
             }
-            return ParseResult.error(currentToken(), "missing )");
+            return ParseResult.error(tokenLine.currentToken(), "missing )");
         }
 
         if (!number.isGenericError()) return number;
-        return ParseResult.error(currentToken(), "invalid expression");
+        return ParseResult.error(tokenLine.currentToken(), "invalid expression");
     }
 
-    private ParseResult<Symbol> parseSymbol(Set<Symbol.SymbolType> expectedSymbols) throws IOException {
-        final var token = currentToken();
+    private ParseResult<Symbol> parseSymbol(Set<Symbol.SymbolType> expectedSymbols) {
+        final var token = tokenLine.currentToken();
         return switch (token) {
             case Symbol symbol when expectedSymbols.contains(symbol.type) -> {
-                skip();
+                tokenLine.skip();
                 yield ParseResult.success(symbol);
             }
             default -> ParseResult.error(token, "unexpected token: '" + token.format() + "'");
         };
     }
 
-    private ParseResult<Symbol> parseSymbol(Symbol.SymbolType expectedSymbol) throws IOException {
+    private ParseResult<Symbol> parseSymbol(Symbol.SymbolType expectedSymbol) {
         return parseSymbol(Set.of(expectedSymbol));
     }
 
-    private ParseResult<Word> parseReservedWord(String word) throws IOException {
-        final var token = currentToken();
+    private ParseResult<Word> parseReservedWord(String word) {
+        final var token = tokenLine.currentToken();
         return switch (token) {
             case Word w when w.value().equals(word) -> {
-                skip();
+                tokenLine.skip();
                 yield ParseResult.success(w);
             }
             default -> ParseResult.error(token, "unexpected token: '" + token.format() + "'");
         };
     }
 
-    private ParseResult<Expression> parseNumber() throws IOException {
+    private ParseResult<Expression> parseNumber() {
         final var minus = parseSymbol(Symbol.SymbolType.Minus);
 
-        final var token = currentToken();
+        final var token = tokenLine.currentToken();
         if (token instanceof NumberConstant number) {
-            skip();
+            tokenLine.skip();
             if (number.value().contains(".")) {
                 return ParseResult.error(token, "floating point number not (yet) supported");
-            };
+            }
             try {
                 return ParseResult.success(new IntConstant((minus.isSuccess() ? -1 : 1) * Integer.parseInt(number.value())));
             } catch (NumberFormatException e) {
@@ -216,10 +229,10 @@ public class Parser {
         return ParseResult.genericError(token);
     }
 
-    private ParseResult<Expression> parseIdentifier() throws IOException {
-        final var token = currentToken();
+    private ParseResult<Expression> parseIdentifier() {
+        final var token = tokenLine.currentToken();
         if (token instanceof Word word) {
-            skip();
+            tokenLine.skip();
             if (word.isReserved()) {
                 return ParseResult.error(token, "identifier expected");
             }
