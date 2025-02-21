@@ -12,14 +12,10 @@ public class Parser {
 
     List<Token> tokens;
     int currentToken = 0;
-    Optional<Token> currentToken() {
-        if (currentToken >= tokens.size())
-            return Optional.empty();
-        else {
-            return Optional.of(tokens.get(currentToken));
-        }
+    Token currentToken() {
+        return tokens.get(currentToken);
     }
-    boolean currentTokenIsEndOfLine() { return currentToken == tokens.size() - 1; }
+    boolean previousTokenLastOfLine() { return (currentToken -1) == tokens.size() - 2; }
 
     void skip() {
         currentToken++;
@@ -41,8 +37,11 @@ public class Parser {
         Token errorToken = null;
 
         tokens = scanner.next();
+        tokens.addLast(new InvalidToken(0, 0, "pseudo token to indicate the yet unknown next token"));
         currentToken = 0;
-        if (tokens == null) { return null; }
+        if (previousTokenLastOfLine() || currentToken() instanceof EndOfProgram) {
+            return new Unit(currentToken() instanceof EndOfProgram, result);
+        }
 
         while (currentToken() != null) {
 
@@ -54,13 +53,13 @@ public class Parser {
             }
 
             final var semicolon = parseSymbol(Symbol.SymbolType.Semicolon);
-            if (semicolon.isSuccess() || (currentTokenIsEndOfLine() || currentToken() instanceof EndOfProgram)) {
+            if (semicolon.isSuccess() || (previousTokenLastOfLine() || currentToken() instanceof EndOfProgram)) {
                 result.addLast(statementOrExpression.value());
-                if (currentTokenIsEndOfLine()  || currentToken() instanceof EndOfProgram) {
+                if (previousTokenLastOfLine()  || currentToken() instanceof EndOfProgram) {
                     return new Unit(currentToken() instanceof EndOfProgram, result);
                 }
             } else {
-                errorToken = statementOrExpression.token();
+                errorToken = semicolon.token();
                 error = semicolon.error();
                 break;
             }
@@ -72,7 +71,7 @@ public class Parser {
         return new Unit(currentToken() instanceof EndOfProgram, errorToken, error);
     }
 
-    /*
+
     public Unit parseProgram() throws IOException {
         List<Statement> result = new LinkedList<>();
         while (true) {
@@ -83,11 +82,9 @@ public class Parser {
                 return unit;
             }
             if (unit.isLast()) break;
-            scanner.skip();
         }
         return new Unit(true, result);
     }
-     */
 
     private ParseResult<? extends Statement> parseStatementOrExpression() throws IOException {
         final var statement = parseStatement();

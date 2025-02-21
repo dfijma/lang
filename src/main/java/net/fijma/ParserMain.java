@@ -16,8 +16,7 @@ public class ParserMain {
             System.out.flush();
         }
     }
-    /*
-    TODO
+
 
     public static void main(String[] args) {
         prompt();
@@ -55,7 +54,6 @@ public class ParserMain {
             }
             if (unit.isLast()) break;
             prompt();
-            t.skip();
         }
     }
 
@@ -79,5 +77,5 @@ public class ParserMain {
         }
     }
 
-     */
+
 }
