@@ -12,13 +12,19 @@ public class Scanner implements AutoCloseable{
 
     private final InputReader scanner;
     private final StringBuilder sb = new StringBuilder();
+    private final boolean allowKill;
 
-    private Scanner(InputReader scanner) {
+    private Scanner(boolean allowKill, InputReader scanner) {
+        this.allowKill = allowKill;
         this.scanner = scanner;
     }
 
+    public static Scanner create(boolean allowKill, InputStream is) throws IOException {
+        return new Scanner(allowKill, InputReader.create(is));
+    }
+
     public static Scanner create(InputStream is) throws IOException {
-        return new Scanner(InputReader.create(is));
+        return new Scanner(true, InputReader.create(is));
     }
 
     boolean atEnd = false;
@@ -60,7 +66,9 @@ public class Scanner implements AutoCloseable{
         final int column = scanner.column();
 
         while (scanner.current() != '\n' && Character.isWhitespace(scanner.current())) {
+            boolean isKill = allowKill && scanner.current() == 11;
             skipScanner();
+            if (isKill) { return new Kill(line, column); }
         }
 
         if (scanner.current() == '\0') {
@@ -69,7 +77,6 @@ public class Scanner implements AutoCloseable{
 
         if (scanner.current() == '\n') {
             setDeferredSkip();
-            // skipScanner();
             return null;
         }
 

@@ -22,7 +22,7 @@ public class ParserMain {
 
     public static void main(String[] args) {
         prompt();
-        try (Scanner scanner = Scanner.create(System.in)) {
+        try (Scanner scanner = Scanner.create(isTTY, System.in)) {
             Parser parser = Parser.create(scanner);
             if (isTTY) {
                 parseUnits(parser, scanner);

@@ -3,6 +3,7 @@ package net.fijma;
 import net.fijma.parsetree.*;
 import net.fijma.token.*;
 
+import javax.swing.text.Utilities;
 import java.io.IOException;
 import java.util.*;
 
@@ -16,10 +17,16 @@ public class Parser {
         private  List<Token> tokens;
         int currentToken = 0;
 
-        public void next() throws IOException {
+        public Unit next() throws IOException {
             tokens = scanner.next();
+            final var kill = tokens.stream().anyMatch(token -> token instanceof Kill);
+            if (kill) {
+                final var endOfProgram = tokens.stream().anyMatch(token -> token instanceof EndOfProgram);
+                return new Unit(endOfProgram, new ArrayList<>());
+            }
             tokens.addLast(new InvalidToken(-42, -42, "pseudo token to indicate the yet unknown next token")); // FIXME: ugly -42 by design
             currentToken = 0;
+            return null;
         }
 
         public Token currentToken() {
@@ -46,12 +53,13 @@ public class Parser {
 
     public Unit parseUnit() throws IOException {
 
+        Unit killed = tokenLine.next();
+        if (killed != null) { return killed; }
+
         final List<Statement> result = new ArrayList<>();
 
         String error = null;
         Token errorToken = null;
-
-        tokenLine.next();
 
         if (tokenLine.previousTokenLastOfLine() || tokenLine.currentToken() instanceof EndOfProgram) {
             return new Unit(tokenLine.currentToken() instanceof EndOfProgram, result);

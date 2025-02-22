@@ -16,7 +16,7 @@ public class Main {
     public static void main(String[] args) {
 
         prompt();
-        try (Scanner scanner = Scanner.create(System.in)) {
+        try (Scanner scanner = Scanner.create(isTTY, System.in)) {
             while (true) {
                 final var tokens = scanner.next();
                 if (tokens == null) break;
