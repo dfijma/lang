@@ -3,6 +3,8 @@ package net.fijma;
 import net.fijma.parsetree.Expression;
 import net.fijma.parsetree.Statement;
 import net.fijma.parsetree.Unit;
+import net.fijma.value.ErrorValue;
+import net.fijma.value.Value;
 
 import java.io.IOException;
 
@@ -41,15 +43,9 @@ public class ParserMain {
             } else if (!unit.value().isEmpty()) {
                 System.out.println(unit.value());
                 for (Statement statement : unit.value()) {
-                    if (statement instanceof Expression expression) {
-                        System.out.println(expression.eval(memory));
-                    } else {
-                        try {
-                            statement.execute(memory);
-                        } catch (RuntimeException e) {
-                            System.out.println("runtime error: " + e.getMessage());
-                        }
-
+                    final Value value = statement.eval(memory);
+                    if (statement instanceof Expression || value instanceof ErrorValue) {
+                        System.out.println(value);
                     }
                 }
             }
@@ -63,14 +59,9 @@ public class ParserMain {
         final Unit result = parser.parseProgram();
         if (!result.isError()) {
             for (Statement statement : result.value()) {
-                if (statement instanceof Expression expression) {
-                    System.out.println(expression.eval(memory));
-                } else {
-                    try {
-                        statement.execute(memory);
-                    } catch (RuntimeException e) {
-                        System.out.println("runtime error: " + e.getMessage());
-                    }
+                final Value value = statement.eval(memory);
+                if (statement instanceof Expression || value instanceof ErrorValue) {
+                    System.out.println(value);
                 }
             }
         } else {

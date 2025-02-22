@@ -3,6 +3,8 @@ package net.fijma.parsetree;
 import net.fijma.Memory;
 import net.fijma.value.ErrorValue;
 import net.fijma.value.IntValue;
+import net.fijma.value.Ok;
+import net.fijma.value.Value;
 
 public class LetStatement extends Statement {
 
@@ -15,16 +17,14 @@ public class LetStatement extends Statement {
     }
 
     @Override
-    public void execute(Memory memory) {
+    public Value eval(Memory memory) {
         final var expressionValue = expression.eval(memory);
-        if (expressionValue instanceof  ErrorValue) {
-            throw new IllegalArgumentException(expressionValue.toString());
-        }
+        if (expressionValue instanceof  ErrorValue) return expressionValue;
         if (expressionValue instanceof IntValue intValue) {
             memory.set(identifier.name, intValue);
-            return;
+            return new Ok();
         }
-        throw new IllegalArgumentException("unknwon expression type: ".formatted(expressionValue.getClass()));
+        return new ErrorValue("unknwon expression type: ".formatted(expressionValue.getClass()));
     }
 
     @Override
