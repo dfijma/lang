@@ -1,6 +1,7 @@
 package net.fijma.parsetree;
 
-import net.fijma.value.Error;
+import net.fijma.Memory;
+import net.fijma.value.ErrorValue;
 import net.fijma.value.Value;
 
 public class Identifier extends Expression {
@@ -14,7 +15,11 @@ public class Identifier extends Expression {
     public String name() { return name; }
 
     @Override
-    public Value eval() { return new Error("identifier evaluation not yet implemented"); }
+    public Value eval(Memory memory) {
+        final var intValue = memory.get(name);
+        if (intValue == null) return new ErrorValue("%s undefined".formatted(name));
+        return intValue;
+    }
 
     @Override
     public String toString() {

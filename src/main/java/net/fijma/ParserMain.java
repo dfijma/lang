@@ -33,6 +33,7 @@ public class ParserMain {
     }
 
     private static void parseUnits(Parser parser, Scanner t) throws IOException {
+        Memory memory = new Memory();
         while (true) {
             final Unit unit = parser.parseUnit();
             if (unit.isError()) {
@@ -41,10 +42,10 @@ public class ParserMain {
                 System.out.println(unit.value());
                 for (Statement statement : unit.value()) {
                     if (statement instanceof Expression expression) {
-                        System.out.println(expression.eval());
+                        System.out.println(expression.eval(memory));
                     } else {
                         try {
-                            statement.execute();
+                            statement.execute(memory);
                         } catch (RuntimeException e) {
                             System.out.println("runtime error: " + e.getMessage());
                         }
@@ -58,14 +59,15 @@ public class ParserMain {
     }
 
     private static void parseProgram(Parser parser) throws IOException {
+        Memory memory = new Memory();
         final Unit result = parser.parseProgram();
         if (!result.isError()) {
             for (Statement statement : result.value()) {
                 if (statement instanceof Expression expression) {
-                    System.out.println(expression.eval());
+                    System.out.println(expression.eval(memory));
                 } else {
                     try {
-                        statement.execute();
+                        statement.execute(memory);
                     } catch (RuntimeException e) {
                         System.out.println("runtime error: " + e.getMessage());
                     }

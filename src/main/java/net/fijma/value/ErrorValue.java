@@ -1,10 +1,10 @@
 package net.fijma.value;
 
-public class Error extends Value {
+public class ErrorValue extends Value {
 
     private final String message;
 
-    public Error(String message) {
+    public ErrorValue(String message) {
         this.message = message;
     }
 

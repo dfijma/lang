@@ -1,5 +1,9 @@
 package net.fijma.parsetree;
 
+import net.fijma.Memory;
+import net.fijma.value.ErrorValue;
+import net.fijma.value.IntValue;
+
 public class LetStatement extends Statement {
 
     final Identifier identifier;
@@ -11,8 +15,16 @@ public class LetStatement extends Statement {
     }
 
     @Override
-    public void execute() {
-        System.out.println("trace: let " + identifier.toString() + " = " + expression.eval());
+    public void execute(Memory memory) {
+        final var expressionValue = expression.eval(memory);
+        if (expressionValue instanceof  ErrorValue) {
+            throw new IllegalArgumentException(expressionValue.toString());
+        }
+        if (expressionValue instanceof IntValue intValue) {
+            memory.set(identifier.name, intValue);
+            return;
+        }
+        throw new IllegalArgumentException("unknwon expression type: ".formatted(expressionValue.getClass()));
     }
 
     @Override

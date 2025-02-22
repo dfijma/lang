@@ -1,6 +1,7 @@
 package net.fijma.parsetree;
 
-import net.fijma.value.Error;
+import net.fijma.Memory;
+import net.fijma.value.ErrorValue;
 import net.fijma.value.IntValue;
 import net.fijma.value.Value;
 import net.fijma.token.Symbol;
@@ -18,9 +19,13 @@ public class BinaryExpression extends Expression {
     }
 
     @Override
-    public Value eval() {
-        Value leftVal = left.eval();
-        Value rightVal = right.eval();
+    public Value eval(Memory memory) {
+
+        Value leftVal = left.eval(memory);
+        if (leftVal instanceof ErrorValue) return leftVal;
+
+        Value rightVal = right.eval(memory);
+        if (rightVal instanceof ErrorValue) return rightVal;
 
         if (leftVal instanceof IntValue leftIntVal && rightVal instanceof IntValue rightIntVal) {
 
@@ -32,7 +37,7 @@ public class BinaryExpression extends Expression {
                     if (rightIntVal.value() != 0) {
                         yield new IntValue(leftIntVal.value() / rightIntVal.value());
                     } else {
-                        yield new Error("division by zero");
+                        yield new ErrorValue("division by zero");
                     }
                 }
                 default -> {
@@ -41,7 +46,7 @@ public class BinaryExpression extends Expression {
             };
         }
 
-        return new Error("cannot evaluate " + leftVal + " and " + rightVal);
+        return new ErrorValue("cannot evaluate " + leftVal + " and " + rightVal);
     }
 
     @Override

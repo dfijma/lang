@@ -1,5 +1,6 @@
 package net.fijma.parsetree;
 
+import net.fijma.Memory;
 import net.fijma.value.IntValue;
 import net.fijma.value.Value;
 
@@ -18,7 +19,7 @@ public class IntConstant extends Expression {
     }
 
     @Override
-    public Value eval() {
+    public Value eval(Memory memory) {
         return new IntValue(value);
     }
 }
