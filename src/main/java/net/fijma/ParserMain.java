@@ -13,20 +13,24 @@ public class ParserMain {
     static boolean isTTY = System.console() != null;
 
     private static void prompt() {
+        prompt(true);
+    }
+
+    private static void prompt(boolean done) {
         if (isTTY) {
-            System.out.print("> ");
+            System.out.print(done ? "> " : "| ");
             System.out.flush();
         }
     }
 
-
     public static void main(String[] args) {
         prompt();
         try (Scanner scanner = Scanner.create(isTTY, System.in)) {
-            Parser parser = Parser.create(scanner);
             if (isTTY) {
-                parseUnits(parser, scanner);
+                FakeParser parser = new FakeParser(scanner);
+                parseUnitsAsync(parser);
             } else {
+                Parser parser = Parser.create(scanner);
                 parseProgram(parser);
             }
         } catch (Exception e) {
@@ -34,7 +38,44 @@ public class ParserMain {
         }
     }
 
-    private static void parseUnits(Parser parser, Scanner t) throws IOException {
+    private static void parseUnitsAsync(FakeParser parser) throws IOException {
+        while (true) {
+            // FIXME: unify FakeParser.Step and Unit, so that some code duplication can be fixed
+            FakeParser.Step step = parseUnitAsync(parser);
+            if (step == null || step.isLast()) break;
+            prompt(true);
+        }
+    }
+
+    private static FakeParser.Step parseUnitAsync(FakeParser parser) throws IOException {
+        parser.start();
+        FakeParser.Step step = null;
+        while (true) {
+            try {
+                step = parser.step();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+
+            if (step.isCont()) {
+                prompt(false);
+            } else {
+                parser.join();
+                if (step.isError()) {
+                    System.out.println("error: " + step.error());
+                } else if (step.isException()) {
+                    throw step.exception();
+                } else {
+                    System.out.println(step.result());
+                }
+                break;
+            }
+        }
+        return step;
+    }
+
+    private static void parseUnits(Parser parser) throws IOException {
         Memory memory = new Memory();
         while (true) {
             final Unit unit = parser.parseUnit();
