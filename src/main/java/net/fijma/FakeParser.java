@@ -1,7 +1,6 @@
 package net.fijma;
 
 import net.fijma.parsetree.Identifier;
-import net.fijma.parsetree.ParseResult;
 import net.fijma.parsetree.Unit;
 import net.fijma.token.EndOfProgram;
 import net.fijma.token.Token;
@@ -32,14 +31,11 @@ public class FakeParser {
     public static abstract class Step {}
 
     public static class ResultStep extends Step {
-        private final ParseResult<Unit> unit;
-        private final boolean isLast;
-        public ResultStep(ParseResult<Unit> unit, boolean last) {
+        private final Unit unit;
+        public ResultStep(Unit unit) {
             this.unit = unit;
-            this.isLast = last;
         }
-        public ParseResult<Unit> getUnit() { return unit; }
-        public boolean isLast() { return isLast; }
+        public Unit getUnit() { return unit; }
     }
 
     public static class ExceptionStep extends Step {
@@ -51,6 +47,35 @@ public class FakeParser {
     }
 
     public static class ContinueStep extends Step {}
+
+    Step run() {
+
+        List<List<Token>> result = new ArrayList<>();
+
+        while (true) {
+
+            try {
+                final var line = scanner.next();
+
+                boolean endOfProgram = line.stream().anyMatch(token -> token instanceof EndOfProgram);
+                boolean error = line.stream().anyMatch(token -> token instanceof Word word && word.value().equals("error"));
+                result.add(line);
+
+                // FIXME: 'Step' and 'ParseResult' can probably by joined into a single class, also prevent double boxing like below
+                if (endOfProgram || error) {
+                    if (error) {
+                        return new ResultStep(new Unit(endOfProgram, new Word(0, 0, "test"), "some specific error"));
+                    } else {
+                        return new ResultStep(new Unit(endOfProgram, List.of(new Identifier("aa"))));
+                    }
+                }
+
+            } catch (IOException e) {
+                return new ExceptionStep(e);
+            }
+
+        }
+    }
 
     void start() {
         thread = new Thread(() -> {
@@ -74,11 +99,12 @@ public class FakeParser {
                     boolean error = line.stream().anyMatch(token -> token instanceof Word word && word.value().equals("error"));
                     result.add(line);
 
+                    // FIXME: 'Step' and 'ParseResult' can probably by joined into a single class, also prevent double boxing like below
                     if (endOfUnit || endOfProgram || error) {
                         if (error) {
-                            step = new ResultStep(ParseResult.error(new Word(0, 0, "test"), "some specific error"), endOfProgram);
+                            step = new ResultStep(new Unit(endOfProgram, new Word(0, 0, "test"), "some specific error"));
                         } else {
-                            step = new ResultStep(ParseResult.success(new Unit(endOfProgram, List.of(new Identifier("aa")))), endOfProgram);
+                            step = new ResultStep(new Unit(endOfProgram, List.of(new Identifier("aa"))));
                         }
                     } else {
                         step = new ContinueStep();

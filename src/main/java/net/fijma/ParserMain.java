@@ -30,7 +30,8 @@ public class ParserMain {
                 FakeParser parser = new FakeParser(scanner);
                 parseUnitsAsync(parser);
             } else {
-                Parser parser = Parser.create(scanner);
+                // Parser parser = Parser.create(scanner);
+                FakeParser parser = new FakeParser(scanner);
                 parseProgram(parser);
             }
         } catch (Exception e) {
@@ -40,9 +41,9 @@ public class ParserMain {
 
     private static void parseUnitsAsync(FakeParser parser) throws IOException {
         while (true) {
-            // FIXME: unify FakeParser.Step and Unit, so that some code duplication can be fixed
+            // FIXME: unify FakeParser.Step and Unit (or ParseResult<T>?), so that some code duplication can be fixed
             FakeParser.Step step = parseUnitAsync(parser);
-            if (step == null || (step instanceof FakeParser.ResultStep resultStep && resultStep.isLast())) break;
+            if (step == null || (step instanceof FakeParser.ResultStep resultStep && resultStep.getUnit().isLast())) break;
             prompt(true);
         }
     }
@@ -111,6 +112,28 @@ public class ParserMain {
             System.out.println("syntax error (line %d, column %d): %s".formatted(result.token().line(), result.token().column(), result.errorMessage()));
             System.exit(1);
         }
+    }
+
+    private static void parseProgram(FakeParser parser) throws IOException {
+
+        final var result = parser.run();
+        switch (result) {
+            case FakeParser.ExceptionStep exceptionStep -> throw exceptionStep.get();
+            case FakeParser.ResultStep resultStep -> {
+                final var unit = resultStep.getUnit();
+                if (!unit.isError()) {
+                    System.out.println(unit.value());
+                } else {
+                    System.out.println("syntax error (line %d, column %d): %s".formatted(unit.token().line(), unit.token().column(), unit.errorMessage()));
+                    System.exit(1);
+                }
+            }
+            default -> {
+                throw new IllegalStateException("bug: parseProgramFake should continue to endofprogram but got " + result);
+            }
+        }
+
+
     }
 
 
