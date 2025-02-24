@@ -42,7 +42,7 @@ public class ParserMain {
         while (true) {
             // FIXME: unify FakeParser.Step and Unit, so that some code duplication can be fixed
             FakeParser.Step step = parseUnitAsync(parser);
-            if (step == null || step.isLast()) break;
+            if (step == null || (step instanceof FakeParser.ResultStep resultStep && resultStep.isLast())) break;
             prompt(true);
         }
     }
@@ -58,16 +58,18 @@ public class ParserMain {
                 break;
             }
 
-            if (step.isCont()) {
+            if (step instanceof FakeParser.ContinueStep) {
                 prompt(false);
             } else {
                 parser.join();
-                if (step.isError()) {
-                    System.out.println("error: " + step.error());
+                if (step instanceof FakeParser.ResultStep resultStep) {
+                    if (resultStep.getUnit().isError()) {
+                        System.out.println("error: " + resultStep.getUnit().error());
+                    } else {
+                        System.out.println(resultStep.getUnit().value());
+                    }
                 } else if (step instanceof FakeParser.ExceptionStep es) {
                     throw es.get();
-                } else {
-                    System.out.println(step.result());
                 }
                 break;
             }

@@ -30,12 +30,18 @@ public class FakeParser {
     BlockingQueue<Step> responses = new ArrayBlockingQueue<>(1);
 
     public static abstract class Step {}
+
     public static class ResultStep extends Step {
         private final ParseResult<Unit> unit;
-        public ResultStep(ParseResult<Unit> unit) {
+        private final boolean isLast;
+        public ResultStep(ParseResult<Unit> unit, boolean last) {
             this.unit = unit;
+            this.isLast = last;
         }
+        public ParseResult<Unit> getUnit() { return unit; }
+        public boolean isLast() { return isLast; }
     }
+
     public static class ExceptionStep extends Step {
         private final IOException exception;
         public ExceptionStep(IOException exception) {
@@ -43,6 +49,7 @@ public class FakeParser {
         }
         IOException get() { return exception; }
     }
+
     public static class ContinueStep extends Step {}
 
     void start() {
@@ -69,9 +76,9 @@ public class FakeParser {
 
                     if (endOfUnit || endOfProgram || error) {
                         if (error) {
-                            step = new ResultStep(ParseResult.success(new Unit(endOfProgram, List.of(new Identifier("aa"))));
+                            step = new ResultStep(ParseResult.error(new Word(0, 0, "test"), "some specific error"), endOfProgram);
                         } else {
-                            step = new ResultStep(ParseResult.error(new Unit(endOfProgram, List.of(new Identifier("aa"))));
+                            step = new ResultStep(ParseResult.success(new Unit(endOfProgram, List.of(new Identifier("aa")))), endOfProgram);
                         }
                     } else {
                         step = new ContinueStep();
