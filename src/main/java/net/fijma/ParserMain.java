@@ -64,8 +64,8 @@ public class ParserMain {
                 parser.join();
                 if (step.isError()) {
                     System.out.println("error: " + step.error());
-                } else if (step.isException()) {
-                    throw step.exception();
+                } else if (step instanceof FakeParser.ExceptionStep es) {
+                    throw es.get();
                 } else {
                     System.out.println(step.result());
                 }

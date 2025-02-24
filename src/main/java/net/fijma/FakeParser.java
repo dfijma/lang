@@ -1,5 +1,8 @@
 package net.fijma;
 
+import net.fijma.parsetree.Identifier;
+import net.fijma.parsetree.ParseResult;
+import net.fijma.parsetree.Unit;
 import net.fijma.token.EndOfProgram;
 import net.fijma.token.Token;
 import net.fijma.token.Word;
@@ -26,66 +29,21 @@ public class FakeParser {
     BlockingQueue<Kick> requests = new ArrayBlockingQueue<>(1);
     BlockingQueue<Step> responses = new ArrayBlockingQueue<>(1);
 
-    public static class Step {
-
-        private final IOException e;
-        private final boolean cont;
-        private final String error;
-        private final String result;
-        private final boolean last;
-
-        private Step(String s, boolean cont, String error, boolean last, IOException e) {
-            this.result = s;
-            this.cont = cont;
-            this.error = error;
-            this.last = last;
-            this.e = e;
-        }
-
-        static Step fromException(IOException e) {
-            return new Step(null, false, null, false, e);
-        }
-
-        static Step withResult(String result, boolean last) {
-            return new Step(result, false, null, last,null);
-        }
-
-        static Step fromError(String error, boolean last) {
-            return new Step(null, false, error, last,null);
-        }
-
-        static Step cont() {
-            return new Step(null, true, null, false, null);
-        }
-
-        public boolean isException() {
-            return e != null;
-        }
-
-        public IOException exception() {
-            return e;
-        }
-
-        public boolean isError() {
-            return error != null;
-        }
-
-        public boolean isCont() {
-            return cont;
-        }
-
-        public String result() {
-            return result;
-        }
-
-        public String error() {
-            return error;
-        }
-
-        public boolean isLast() {
-            return last;
+    public static abstract class Step {}
+    public static class ResultStep extends Step {
+        private final ParseResult<Unit> unit;
+        public ResultStep(ParseResult<Unit> unit) {
+            this.unit = unit;
         }
     }
+    public static class ExceptionStep extends Step {
+        private final IOException exception;
+        public ExceptionStep(IOException exception) {
+            this.exception = exception;
+        }
+        IOException get() { return exception; }
+    }
+    public static class ContinueStep extends Step {}
 
     void start() {
         thread = new Thread(() -> {
@@ -111,16 +69,16 @@ public class FakeParser {
 
                     if (endOfUnit || endOfProgram || error) {
                         if (error) {
-                            step = Step.fromError("oeps!", endOfProgram);
+                            step = new ResultStep(ParseResult.success(new Unit(endOfProgram, List.of(new Identifier("aa"))));
                         } else {
-                            step = Step.withResult(result.toString(), endOfProgram);
+                            step = new ResultStep(ParseResult.error(new Unit(endOfProgram, List.of(new Identifier("aa"))));
                         }
                     } else {
-                        step = Step.cont();
+                        step = new ContinueStep();
                     }
 
                 } catch (IOException e) {
-                    step = Step.fromException(e);
+                    step = new ExceptionStep(e);
                 }
 
                 try {
@@ -130,7 +88,7 @@ public class FakeParser {
                     break;
                 }
 
-                if (!step.isCont()) break;
+                if (! (step instanceof ContinueStep)) break;
 
             }
         });
