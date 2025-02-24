@@ -21,8 +21,8 @@ public class TestEvaluate {
 
     public void testUnit(String reason, String input, String expected) {
         final ByteArrayInputStream bais = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
-        try (Scanner t = Scanner.create(bais)) {
-            final Parser parser = Parser.create(t);
+        try (Scanner scanner = Scanner.create(bais)) {
+            final Parser parser = new Parser(scanner);
             Unit unit = parser.parseUnit();
             System.out.println(unit);
             final var first = unit.value().get(0);

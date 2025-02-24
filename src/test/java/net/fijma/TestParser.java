@@ -44,8 +44,8 @@ public class TestParser {
 
     public void test(String reason, String input, String expected) {
         final ByteArrayInputStream bais = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
-        try (Scanner t = Scanner.create(bais)) {
-            Parser parser = Parser.create(t);
+        try (Scanner scanner = Scanner.create(bais)) {
+            Parser parser = new Parser(scanner);
             final Unit result = parser.parseProgram();
             System.out.println(result.value());
             assertThat(reason, result.isError(), is(expected == null));
@@ -94,8 +94,8 @@ public class TestParser {
 
     public void testUnit(String reason, String input, int index, String expected) {
         final ByteArrayInputStream bais = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
-        try (Scanner t = Scanner.create(bais)) {
-            final Parser parser = Parser.create(t);
+        try (Scanner scanner = Scanner.create(bais)) {
+            final Parser parser = new Parser(scanner);
             Unit unit = null;
             while (index >=0 ) {
                 unit = parser.parseUnit();
@@ -121,8 +121,8 @@ public class TestParser {
 
     public void testError(String reason, String input, int index, String expected) {
         final ByteArrayInputStream bais = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
-        try (Scanner t = Scanner.create(bais)) {
-            final Parser parser = Parser.create(t);
+        try (Scanner scanner = Scanner.create(bais)) {
+            final Parser parser = new Parser(scanner);
             Unit unit = parser.parseUnit();
             assertThat(reason, unit.isError(), is(true));
             System.out.println(unit.error());

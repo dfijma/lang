@@ -43,12 +43,8 @@ public class Parser {
     }
 
 
-    private Parser(Scanner scanner) {
+    public Parser(Scanner scanner) {
         this.scanner = scanner;
-    }
-
-    static Parser create(Scanner scanner)  {
-        return new Parser(scanner);
     }
 
     public Unit parseUnit() throws IOException {
