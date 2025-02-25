@@ -29,13 +29,28 @@ public class FakeParser {
                 final var endOfProgram = tokens.stream().anyMatch(token -> token instanceof EndOfProgram);
                 return new Unit(endOfProgram, new ArrayList<>());
             }
-            tokens.addLast(new InvalidToken(-42, -42, "pseudo token to indicate the yet unknown next token")); // FIXME: ugly -42 by design
             currentToken = 0;
             return null;
         }
 
         public Token currentToken() {
+            if (currentToken >= tokens.size()) {
+                try {
+                    responses.put(new ContinueStep());
+                    Kick ignored  = requests.take();
+                    Unit killed = tokenLine.next();
+                    if (killed != null) {
+                        // TODO: handle
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    // TODO: how to recover
+                } catch (IOException e) {
+                    // TODO: how to recover
+                }
+            }
             return tokens.get(currentToken);
+
         }
 
         public boolean previousTokenLastOfLine() {
@@ -90,13 +105,10 @@ public class FakeParser {
     void start() {
         thread = new Thread(() -> {
 
+            Token ignored = tokenLine.currentToken(); // await first kick
+
             while (true) {
-                try {
-                    Kick ignored  = requests.take();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
+
 
                 Step step;
                 try {
@@ -142,9 +154,6 @@ public class FakeParser {
     }
 
     public Unit parseUnit() throws IOException {
-
-        Unit killed = tokenLine.next();
-        if (killed != null) { return killed; }
 
         final List<Statement> result = new ArrayList<>();
 
