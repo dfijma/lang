@@ -48,6 +48,7 @@ public class Scanner implements AutoCloseable{
         scanner.skip();
     }
 
+    // TODO: probably not necessary, now that InputReader also has a "deferred"-like construct
     private boolean deferredSkip = false;
 
     private void setDeferredSkip() {

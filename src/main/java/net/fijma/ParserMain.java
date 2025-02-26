@@ -28,13 +28,13 @@ public class ParserMain {
         try (Scanner scanner = Scanner.create(isTTY, System.in)) {
             FakeParser parser = new FakeParser(scanner);
             if (isTTY) {
-
                 parseUnitsAsync(parser);
             } else {
                 parseProgram(parser);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+             System.err.printf("fatal error: %s%n", e.getMessage());
+             System.exit(1);
         }
     }
 
@@ -65,7 +65,7 @@ public class ParserMain {
                 if (step instanceof FakeParser.ResultStep resultStep) {
                     final Unit unit = resultStep.getUnit();
                     if (unit.isError()) {
-                        System.out.println("syntax error (position %d): %s".formatted(unit.token().column(), unit.errorMessage()));
+                        System.out.printf("syntax error (position %d): %s%n", unit.token().column(), unit.errorMessage());
                     } else if (!unit.value().isEmpty()) {
                         System.out.println(unit.value());
                         for (Statement statement : unit.value()) {
@@ -99,7 +99,7 @@ public class ParserMain {
                         }
                     }
                 } else {
-                    System.out.println("syntax error (line %d, column %d): %s".formatted(unit.token().line(), unit.token().column(), unit.errorMessage()));
+                    System.out.printf("syntax error (line %d, column %d): %s%n", unit.token().line(), unit.token().column(), unit.errorMessage());
                     System.exit(1);
                 }
             }

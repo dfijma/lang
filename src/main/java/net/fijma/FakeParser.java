@@ -22,8 +22,6 @@ public class FakeParser {
         private  List<Token> tokens = new ArrayList<>();
         int currentToken = 0;
 
-        boolean first = true;
-
         public Unit next() throws IOException {
             tokens = scanner.next();
             final var kill = tokens.stream().anyMatch(token -> token instanceof Kill);
@@ -37,23 +35,24 @@ public class FakeParser {
 
         public Token currentToken() {
             if (currentToken >= tokens.size()) {
-                try {
 
-                    //if (!first) {
-                    System.out.println("kick?");
+                if (thread != null) {
+                    try {
                         Kick ignored = requests.take();
-
-                    //}
-                    first = false;
-                    Unit killed = tokenLine.next();
-                    if (killed != null) {
-                        // TODO: handle
+                        // TODO: handle killed
+                        Unit killed = tokenLine.next();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        // TODO: how to recover
+                    } catch (IOException e) {
+                        // TODO: how to recover
                     }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    // TODO: how to recover
-                } catch (IOException e) {
-                    // TODO: how to recover
+                } else {
+                    try {
+                        Unit killed = tokenLine.next();
+                    } catch (IOException e) {
+                        // TODO: how to recover
+                    }
                 }
             }
             return tokens.get(currentToken);
@@ -101,7 +100,6 @@ public class FakeParser {
     public static class ContinueStep extends Step {}
 
     Step run() {
-
         try {
             return new ResultStep(parseProgram());
         } catch (IOException e) {
@@ -117,14 +115,8 @@ public class FakeParser {
             while (true) {
                 Step step;
                 try {
-
                     final Unit unit = parseUnit();
-
                     step = new ResultStep(unit);
-
-                    // TODO:
-                    //  step = new ContinueStep();
-
 
                 } catch (IOException e) {
                      step = new ExceptionStep(e);
@@ -136,9 +128,6 @@ public class FakeParser {
                     Thread.currentThread().interrupt();
                     break;
                 }
-
-                if (! (step instanceof ContinueStep)) break;
-
             }
         });
 
@@ -177,15 +166,12 @@ public class FakeParser {
                 error = statementOrExpression.error();
                 break;
             }
-            System.out.println("found statement: " + statementOrExpression);
 
             final var semicolon = parseSymbol(Symbol.SymbolType.Semicolon);
 
-            System.out.println("passed semicolon: " + semicolon);
             if (semicolon.isSuccess() || (tokenLine.previousTokenLastOfLine() || tokenLine.currentToken() instanceof EndOfProgram)) {
                 result.addLast(statementOrExpression.value());
                 if (tokenLine.previousTokenLastOfLine() || tokenLine.currentToken() instanceof EndOfProgram) {
-                    System.out.println("found a unit;");
                     return new Unit(!tokenLine.previousTokenLastOfLine(), result);
                 }
             } else {
@@ -234,8 +220,6 @@ public class FakeParser {
         final ParseResult<Expression> term = parseTerm();
         if (term.isError()) { return term; }
 
-        System.out.println("found term: " + term);
-
         final ParseResult<Symbol> operator = parseSymbol(Set.of(Symbol.SymbolType.Plus, Symbol.SymbolType.Minus));
         if (operator.isError()) { return term; }
 
@@ -268,8 +252,6 @@ public class FakeParser {
 
         final ParseResult<Expression> factor = parseFactor();
         if (factor.isError()) { return factor; }
-
-        System.out.println("found factor: " + factor);
 
         final ParseResult<Symbol> operator = parseSymbol(Set.of(Symbol.SymbolType.Asterisk, Symbol.SymbolType.Slash));
         if (operator.isError()) { return factor; }
@@ -309,7 +291,6 @@ public class FakeParser {
         final var token = tokenLine.currentToken();
         return switch (token) {
             case Symbol symbol when expectedSymbols.contains(symbol.type) -> {
-                System.out.println("found symbol: " + symbol);
                 tokenLine.skip();
                 yield ParseResult.success(symbol);
             }
