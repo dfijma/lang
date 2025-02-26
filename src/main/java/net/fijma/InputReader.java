@@ -12,6 +12,8 @@ public class InputReader implements AutoCloseable {
     private int line;
     private int column;
     private boolean atStart = true;
+    private boolean skip = true;
+
 
     private InputReader(InputStream is) {
         this.isr = new InputStreamReader(is);
@@ -21,20 +23,23 @@ public class InputReader implements AutoCloseable {
 
     public static InputReader create(InputStream is) throws IOException {
         final var inputReader = new InputReader(is);
-        inputReader.read();
         return inputReader;
     }
 
     public int line() { return line; }
     public int column() { return column; }
 
-    public char current() {
+    public char current() throws IOException {
+        if (skip) {
+            read();
+            skip = false;
+        }
         return currentChar;
     }
 
     public void skip() throws IOException {
         if (currentChar != 0) {
-            read();
+            skip = true;
         }
     }
 

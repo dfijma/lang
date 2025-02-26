@@ -28,6 +28,7 @@ public class ParserMain {
         try (Scanner scanner = Scanner.create(isTTY, System.in)) {
             FakeParser parser = new FakeParser(scanner);
             if (isTTY) {
+
                 parseUnitsAsync(parser);
             } else {
                 parseProgram(parser);
