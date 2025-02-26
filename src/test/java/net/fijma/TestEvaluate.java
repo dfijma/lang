@@ -2,7 +2,6 @@ package net.fijma;
 
 import net.fijma.parsetree.Expression;
 import net.fijma.parsetree.Unit;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;

@@ -6,7 +6,9 @@ import net.fijma.parsetree.Unit;
 import net.fijma.value.ErrorValue;
 import net.fijma.value.Value;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 
 public class ParserMain {
 
@@ -19,27 +21,27 @@ public class ParserMain {
         }
     }
 
-
     public static void main(String[] args) {
         prompt();
-        try (Scanner scanner = Scanner.create(isTTY, System.in)) {
-            Parser parser = Parser.create(scanner);
+        try (InputStream is = (args.length > 0 ? new FileInputStream(args[0]) : System.in); Scanner scanner = Scanner.create(isTTY, is)) {
+            final Parser parser = Parser.create(scanner, isTTY);
             if (isTTY) {
-                parseUnits(parser, scanner);
+                parseUnits(parser);
             } else {
                 parseProgram(parser);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.printf("fatal error: %s%n", e.getMessage());
+            System.exit(1);
         }
     }
 
-    private static void parseUnits(Parser parser, Scanner t) throws IOException {
+    private static void parseUnits(Parser parser) throws IOException {
         Memory memory = new Memory();
         while (true) {
             final Unit unit = parser.parseUnit();
             if (unit.isError()) {
-                System.out.println("syntax error (position %d): %s".formatted(unit.token().column(), unit.errorMessage()));
+                System.out.printf("syntax error (position %d): %s%n", unit.token().column(), unit.errorMessage());
             } else if (!unit.value().isEmpty()) {
                 System.out.println(unit.value());
                 for (Statement statement : unit.value()) {
@@ -51,6 +53,7 @@ public class ParserMain {
             }
             if (unit.isLast()) break;
             prompt();
+            parser.skipPseudoToken();
         }
     }
 
@@ -65,7 +68,7 @@ public class ParserMain {
                 }
             }
         } else {
-            System.out.println("syntax error (line %d, column %d): %s".formatted(result.token().line(), result.token().column(), result.errorMessage()));
+            System.out.printf("syntax error (line %d, column %d): %s%n", result.token().line(), result.token().column(), result.errorMessage());
             System.exit(1);
         }
     }

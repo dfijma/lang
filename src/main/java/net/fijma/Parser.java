@@ -3,7 +3,6 @@ package net.fijma;
 import net.fijma.parsetree.*;
 import net.fijma.token.*;
 
-import javax.swing.text.Utilities;
 import java.io.IOException;
 import java.util.*;
 
@@ -11,21 +10,29 @@ public class Parser {
 
     private final Scanner scanner;
     private final TokenLine tokenLine = new TokenLine();
+    private final boolean interactive;
 
     private class TokenLine {
 
         private  List<Token> tokens;
         int currentToken = 0;
+        boolean previousTokenLastOfLine = true;
 
-        public Unit next() throws IOException {
-            tokens = scanner.next();
-            final var kill = tokens.stream().anyMatch(token -> token instanceof Kill);
-            if (kill) {
-                final var endOfProgram = tokens.stream().anyMatch(token -> token instanceof EndOfProgram);
-                return new Unit(endOfProgram, new ArrayList<>());
-            }
-            tokens.addLast(new InvalidToken(-42, -42, "pseudo token to indicate the yet unknown next token")); // FIXME: ugly -42 by design
-            currentToken = 0;
+        public Unit next(boolean prompt) throws IOException {
+            do {
+                if (prompt && interactive) { System.out.print("| "); }
+                tokens = scanner.next();
+                final var kill = tokens.stream().anyMatch(token -> token instanceof Kill);
+                if (kill) {
+                    final var endOfProgram = tokens.stream().anyMatch(token -> token instanceof EndOfProgram);
+                    return new Unit(endOfProgram, new ArrayList<>());
+                }
+                if (interactive) {
+                    tokens.addLast(new InvalidToken(-42, -42, "pseudo token to indicate the yet unknown next token")); // FIXME: ugly -42 by design
+                }
+                currentToken = 0;
+                previousTokenLastOfLine = true;
+            } while (tokens.isEmpty());
             return null;
         }
 
@@ -34,34 +41,41 @@ public class Parser {
         }
 
         public boolean previousTokenLastOfLine() {
-            return (currentToken - 1) == tokens.size() - 2; // yah!
+            return previousTokenLastOfLine  || (currentToken() instanceof InvalidToken ); // yah!
         }
 
-        void skip() {
+        void skip() throws IOException {
+            previousTokenLastOfLine = false;
             currentToken++;
+            if (currentToken >= tokens.size()) {
+               next(true);
+            }
         }
     }
 
-
-    private Parser(Scanner scanner) {
+    private Parser(Scanner scanner, boolean interactive) {
         this.scanner = scanner;
+        this.interactive = interactive;
     }
 
-    static Parser create(Scanner scanner)  {
-        return new Parser(scanner);
+    static Parser create(Scanner scanner) throws IOException {
+        return create(scanner, false);
+    }
+
+    static Parser create(Scanner scanner, boolean interactive) throws IOException {
+        final var result = new Parser(scanner, interactive);
+        result.tokenLine.next(false);
+        return result;
     }
 
     public Unit parseUnit() throws IOException {
-
-        Unit killed = tokenLine.next();
-        if (killed != null) { return killed; }
 
         final List<Statement> result = new ArrayList<>();
 
         String error = null;
         Token errorToken = null;
 
-        if (tokenLine.previousTokenLastOfLine() || tokenLine.currentToken() instanceof EndOfProgram) {
+        if (tokenLine.currentToken() instanceof EndOfProgram) {
             return new Unit(tokenLine.currentToken() instanceof EndOfProgram, result);
         }
 
@@ -93,8 +107,11 @@ public class Parser {
         return new Unit(tokenLine.currentToken() instanceof EndOfProgram, errorToken, error);
     }
 
+    public void skipPseudoToken() throws IOException {
+        if (tokenLine.currentToken() instanceof InvalidToken) { tokenLine.skip(); }
+    }
 
-    public Unit parseProgram() throws IOException {
+    public Unit  parseProgram() throws IOException {
         List<Statement> result = new LinkedList<>();
         while (true) {
             final Unit unit = parseUnit();
@@ -193,7 +210,7 @@ public class Parser {
         return ParseResult.error(tokenLine.currentToken(), "invalid expression");
     }
 
-    private ParseResult<Symbol> parseSymbol(Set<Symbol.SymbolType> expectedSymbols) {
+    private ParseResult<Symbol> parseSymbol(Set<Symbol.SymbolType> expectedSymbols) throws IOException  {
         final var token = tokenLine.currentToken();
         return switch (token) {
             case Symbol symbol when expectedSymbols.contains(symbol.type) -> {
@@ -204,11 +221,11 @@ public class Parser {
         };
     }
 
-    private ParseResult<Symbol> parseSymbol(Symbol.SymbolType expectedSymbol) {
+    private ParseResult<Symbol> parseSymbol(Symbol.SymbolType expectedSymbol) throws IOException  {
         return parseSymbol(Set.of(expectedSymbol));
     }
 
-    private ParseResult<Word> parseReservedWord(String word) {
+    private ParseResult<Word> parseReservedWord(String word) throws IOException {
         final var token = tokenLine.currentToken();
         return switch (token) {
             case Word w when w.value().equals(word) -> {
@@ -219,7 +236,7 @@ public class Parser {
         };
     }
 
-    private ParseResult<Expression> parseNumber() {
+    private ParseResult<Expression> parseNumber() throws IOException {
         final var minus = parseSymbol(Symbol.SymbolType.Minus);
 
         final var token = tokenLine.currentToken();
@@ -237,7 +254,7 @@ public class Parser {
         return ParseResult.genericError(token);
     }
 
-    private ParseResult<Expression> parseIdentifier() {
+    private ParseResult<Expression> parseIdentifier() throws IOException {
         final var token = tokenLine.currentToken();
         if (token instanceof Word word) {
             tokenLine.skip();
