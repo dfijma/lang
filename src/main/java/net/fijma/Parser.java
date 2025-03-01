@@ -18,9 +18,13 @@ public class Parser {
         int currentToken = 0;
         boolean previousTokenLastOfLine = true;
 
+        boolean started  = false;
+
+        void setStarted() { started = true; }
+
         public Unit next(boolean prompt) throws IOException {
             do {
-                if (prompt && interactive) { System.out.print("| "); }
+                if (prompt && interactive && !started) { System.out.print("| "); }
                 tokens = scanner.next();
                 final var kill = tokens.stream().anyMatch(token -> token instanceof Kill);
                 if (kill) {
@@ -33,6 +37,7 @@ public class Parser {
                 currentToken = 0;
                 previousTokenLastOfLine = true;
             } while (tokens.isEmpty());
+            started = false;
             return null;
         }
 
@@ -75,6 +80,8 @@ public class Parser {
         String error = null;
         Token errorToken = null;
 
+        tokenLine.setStarted();
+
         if (tokenLine.currentToken() instanceof EndOfProgram) {
             return new Unit(tokenLine.currentToken() instanceof EndOfProgram, result);
         }
@@ -89,7 +96,9 @@ public class Parser {
             }
 
             final var semicolon = parseSymbol(Symbol.SymbolType.Semicolon);
-            if (semicolon.isSuccess() || (tokenLine.previousTokenLastOfLine() || tokenLine.currentToken() instanceof EndOfProgram)) {
+            if (currentSymbolIs(Symbol.SymbolType.Semicolon)
+                    || tokenLine.previousTokenLastOfLine()
+                    || tokenLine.currentToken() instanceof EndOfProgram) {
                 result.addLast(statementOrExpression.value());
                 if (tokenLine.previousTokenLastOfLine()  || tokenLine.currentToken() instanceof EndOfProgram) {
                     return new Unit(tokenLine.currentToken() instanceof EndOfProgram, result);
@@ -223,6 +232,10 @@ public class Parser {
 
     private ParseResult<Symbol> parseSymbol(Symbol.SymbolType expectedSymbol) throws IOException  {
         return parseSymbol(Set.of(expectedSymbol));
+    }
+
+    private boolean currentSymbolIs(Symbol.SymbolType expectedSymbol) {
+        return tokenLine.currentToken() instanceof Symbol symbol && symbol.type == expectedSymbol;
     }
 
     private ParseResult<Word> parseReservedWord(String word) throws IOException {
