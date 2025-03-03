@@ -9,58 +9,13 @@ import java.util.*;
 public class Parser {
 
     private final Scanner scanner;
-    private final TokenLine tokenLine = new TokenLine();
     private final boolean interactive;
+    private Token currentToken;
 
-    private class TokenLine {
-
-        private  List<Token> tokens;
-        int currentToken = 0;
-        boolean previousTokenLastOfLine = true;
-
-        boolean started  = false;
-
-        void setStarted() { started = true; }
-
-        public Unit next(boolean prompt) throws IOException {
-            do {
-                if (prompt && interactive && !started) { System.out.print("| "); }
-                tokens = scanner.next();
-                final var kill = tokens.stream().anyMatch(token -> token instanceof Kill);
-                if (kill) {
-                    final var endOfProgram = tokens.stream().anyMatch(token -> token instanceof EndOfProgram);
-                    return new Unit(endOfProgram, new ArrayList<>());
-                }
-                if (interactive) {
-                    tokens.addLast(new InvalidToken(-42, -42, "pseudo token to indicate the yet unknown next token")); // FIXME: ugly -42 by design
-                }
-                currentToken = 0;
-                previousTokenLastOfLine = true;
-            } while (tokens.isEmpty());
-            started = false;
-            return null;
-        }
-
-        public Token currentToken() {
-            return tokens.get(currentToken);
-        }
-
-        public boolean previousTokenLastOfLine() {
-            return previousTokenLastOfLine  || (currentToken() instanceof InvalidToken ); // yah!
-        }
-
-        void skip() throws IOException {
-            previousTokenLastOfLine = false;
-            currentToken++;
-            if (currentToken >= tokens.size()) {
-               next(true);
-            }
-        }
-    }
-
-    private Parser(Scanner scanner, boolean interactive) {
+    private Parser(Scanner scanner, boolean interactive) throws IOException {
         this.scanner = scanner;
         this.interactive = interactive;
+        this.currentToken = scanner.next();
     }
 
     static Parser create(Scanner scanner) throws IOException {
@@ -69,7 +24,6 @@ public class Parser {
 
     static Parser create(Scanner scanner, boolean interactive) throws IOException {
         final var result = new Parser(scanner, interactive);
-        result.tokenLine.next(false);
         return result;
     }
 
@@ -77,18 +31,13 @@ public class Parser {
 
         final List<Statement> result = new ArrayList<>();
 
-        String error = null;
-        Token errorToken = null;
+        String error;
+        Token errorToken;
 
-        tokenLine.setStarted();
-
-        if (tokenLine.currentToken() instanceof EndOfProgram) {
-            return new Unit(tokenLine.currentToken() instanceof EndOfProgram, result);
-        }
-
-        while (tokenLine.currentToken() != null) {
+        while (true) {
 
             final var statementOrExpression = parseStatementOrExpression();
+
             if (statementOrExpression.isError()) {
                 errorToken = statementOrExpression.token();
                 error = statementOrExpression.error();
@@ -96,12 +45,14 @@ public class Parser {
             }
 
             final var semicolon = parseSymbol(Symbol.SymbolType.Semicolon);
+            final var endOfLine = parseEndOfLine();
+            final var endOfProgram = currentToken instanceof EndOfProgram;
             if (semicolon.isSuccess()
-                    || tokenLine.previousTokenLastOfLine()
-                    || tokenLine.currentToken() instanceof EndOfProgram) {
+                    || endOfLine.isSuccess()
+                    || endOfProgram) {
                 result.addLast(statementOrExpression.value());
-                if (tokenLine.previousTokenLastOfLine()  || tokenLine.currentToken() instanceof EndOfProgram) {
-                    return new Unit(tokenLine.currentToken() instanceof EndOfProgram, result);
+                if ( endOfLine.isSuccess() || endOfProgram) {
+                    return new Unit(endOfProgram, result);
                 }
             } else {
                 errorToken = semicolon.token();
@@ -111,13 +62,11 @@ public class Parser {
 
         }
 
-        if (errorToken == null || error == null) { throw new IllegalStateException("bug?"); }
+        if (errorToken == null || error == null) {
+            throw new IllegalStateException("bug?");
+        }
 
-        return new Unit(tokenLine.currentToken() instanceof EndOfProgram, errorToken, error);
-    }
-
-    public void skipPseudoToken() throws IOException {
-        if (tokenLine.currentToken() instanceof InvalidToken) { tokenLine.skip(); }
+        return new Unit(currentToken instanceof EndOfProgram, errorToken, error);
     }
 
     public Unit  parseProgram() throws IOException {
@@ -143,7 +92,7 @@ public class Parser {
     private ParseResult<Statement> parseStatement() throws IOException {
         final ParseResult<Statement> let = parseLetStatement();
         if (let.isSuccess() || (let.isError() && !let.isGenericError())) { return let;}
-        return ParseResult.genericError(tokenLine.currentToken());
+        return ParseResult.genericError(currentToken);
     }
 
     // expression <- term [ additive-operator expression] | let x = expression |
@@ -212,18 +161,18 @@ public class Parser {
             if (parseSymbol(Symbol.SymbolType.RightParenthesis).isSuccess()) {
                 return expression;
             }
-            return ParseResult.error(tokenLine.currentToken(), "missing )");
+            return ParseResult.error(currentToken, "missing )");
         }
 
         if (!number.isGenericError()) return number;
-        return ParseResult.error(tokenLine.currentToken(), "invalid expression");
+        return ParseResult.error(currentToken, "invalid expression");
     }
 
     private ParseResult<Symbol> parseSymbol(Set<Symbol.SymbolType> expectedSymbols) throws IOException  {
-        final var token = tokenLine.currentToken();
+        final var token = currentToken;
         return switch (token) {
             case Symbol symbol when expectedSymbols.contains(symbol.type) -> {
-                tokenLine.skip();
+                skip();
                 yield ParseResult.success(symbol);
             }
             default -> ParseResult.error(token, "unexpected token: '" + token.format() + "'");
@@ -234,15 +183,20 @@ public class Parser {
         return parseSymbol(Set.of(expectedSymbol));
     }
 
-    private boolean currentSymbolIs(Symbol.SymbolType expectedSymbol) {
-        return tokenLine.currentToken() instanceof Symbol symbol && symbol.type == expectedSymbol;
+    private ParseResult<String> parseEndOfLine() throws IOException {
+        final var token = currentToken;
+        if (token instanceof EndOfLine) {
+            skip();
+            return ParseResult.success("\n");
+        }
+        return ParseResult.error(token, "eol expected");
     }
 
     private ParseResult<Word> parseReservedWord(String word) throws IOException {
-        final var token = tokenLine.currentToken();
+        final var token = currentToken;
         return switch (token) {
             case Word w when w.value().equals(word) -> {
-                tokenLine.skip();
+                skip();
                 yield ParseResult.success(w);
             }
             default -> ParseResult.error(token, "unexpected token: '" + token.format() + "'");
@@ -252,9 +206,9 @@ public class Parser {
     private ParseResult<Expression> parseNumber() throws IOException {
         final var minus = parseSymbol(Symbol.SymbolType.Minus);
 
-        final var token = tokenLine.currentToken();
+        final var token = currentToken;
         if (token instanceof NumberConstant number) {
-            tokenLine.skip();
+            skip();
             if (number.value().contains(".")) {
                 return ParseResult.error(token, "floating point number not (yet) supported");
             }
@@ -268,15 +222,20 @@ public class Parser {
     }
 
     private ParseResult<Expression> parseIdentifier() throws IOException {
-        final var token = tokenLine.currentToken();
+        final var token = currentToken;
         if (token instanceof Word word) {
-            tokenLine.skip();
+            skip();
             if (word.isReserved()) {
                 return ParseResult.error(token, "identifier expected");
             }
             return ParseResult.success(new Identifier(word.value()));
         }
         return ParseResult.genericError(token);
+    }
+
+    private void skip() throws IOException {
+        if (currentToken instanceof EndOfProgram) return;
+        currentToken = scanner.next();
     }
 
 }

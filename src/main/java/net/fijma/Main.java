@@ -1,5 +1,6 @@
 package net.fijma;
 
+import net.fijma.token.EndOfLine;
 import net.fijma.token.EndOfProgram;
 
 public class Main {
@@ -18,10 +19,14 @@ public class Main {
         prompt();
         try (Scanner scanner = Scanner.create(isTTY, System.in)) {
             while (true) {
-                final var tokens = scanner.next();
-                if (tokens == null) break;
-                System.out.println(tokens);
-                prompt();
+                final var token = scanner.next();
+                if (token instanceof EndOfProgram) break;
+                System.out.print(token + " ");
+                if (token instanceof EndOfProgram) break;
+                if (token instanceof EndOfLine) {
+                    System.out.println();
+                    prompt();
+                }
             }
             
         } catch (Exception e) {

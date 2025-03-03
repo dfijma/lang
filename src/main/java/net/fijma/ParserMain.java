@@ -3,6 +3,7 @@ package net.fijma;
 import net.fijma.parsetree.Expression;
 import net.fijma.parsetree.Statement;
 import net.fijma.parsetree.Unit;
+import net.fijma.token.InvalidToken;
 import net.fijma.value.ErrorValue;
 import net.fijma.value.Value;
 
@@ -53,7 +54,6 @@ public class ParserMain {
             }
             if (unit.isLast()) break;
             prompt();
-            parser.skipPseudoToken();
         }
     }
 

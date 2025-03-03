@@ -5,47 +5,28 @@ import net.fijma.token.NumberConstant;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
 
 public class Scanner implements AutoCloseable{
 
-    private final InputReader scanner;
+    private final InputReader reader;
     private final StringBuilder sb = new StringBuilder();
-    private final boolean allowKill;
+    private final boolean interactive;
 
-    private Scanner(boolean allowKill, InputReader scanner) {
-        this.allowKill = allowKill;
-        this.scanner = scanner;
+    private Scanner(boolean interactive, InputReader reader) throws IOException {
+        this.interactive = interactive;
+        this.reader = reader;
     }
 
-    public static Scanner create(boolean allowKill, InputStream is) throws IOException {
-        return new Scanner(allowKill, InputReader.create(is));
+    public static Scanner create(boolean interactive, InputStream is) throws IOException {
+        return new Scanner(interactive, InputReader.create(is));
     }
 
     public static Scanner create(InputStream is) throws IOException {
         return new Scanner(true, InputReader.create(is));
     }
 
-    boolean atEnd = false;
-
-    public List<Token> next() throws IOException {
-        if (atEnd) return null;
-
-        List<Token> result = new ArrayList<>();
-        Token token;
-        while ( (token=nextToken()) != null) {
-            result.add(token);
-            if (token instanceof EndOfProgram) {
-                atEnd = true;
-                break;
-            }
-        }
-        return result;
-    }
-
     private void skipScanner() throws IOException {
-        scanner.skip();
+        reader.skip();
     }
 
     private boolean deferredSkip = false;
@@ -55,42 +36,52 @@ public class Scanner implements AutoCloseable{
        deferredSkip = true;
     }
 
+    public Token next() throws IOException {
+        while (true) {
+            final var token = nextToken();
+            if (!(token instanceof EndOfLine) || interactive) {
+                return token;
+            }
+        }
+    }
     private Token nextToken() throws IOException {
 
         if (deferredSkip) {
-            scanner.skip();
+            reader.skip();
             deferredSkip = false;
         }
 
-        final int line = scanner.line();
-        final int column = scanner.column();
+        final int line = reader.line();
+        final int column = reader.column();
 
-        while (scanner.current() != '\n' && Character.isWhitespace(scanner.current())) {
-            boolean isKill = allowKill && scanner.current() == 11;
+        while (reader.current() != '\n' && Character.isWhitespace(reader.current())) {
+            boolean isKill = interactive && (reader.current() == 11);
             skipScanner();
-            if (isKill) { return new Kill(line, column); }
+            if (isKill) {
+                return new Kill(line, column);
+            }
         }
 
-        if (scanner.current() == '\0') {
+        if (reader.current() == '\0') {
             return new EndOfProgram(line, column);
         }
 
-        if (scanner.current() == '\n') {
+        if (reader.current() == '\n') {
             setDeferredSkip();
-            return null;
+            return new EndOfLine(line, column);
         }
 
         sb.setLength(0);
 
-        if (Character.isDigit(scanner.current()) /* || scanner.current() == '.' */) {
+        if (Character.isDigit(reader.current()) /* || scanner.current() == '.' */) {
             int dots = 0;
             do {
-                sb.append(scanner.current());
-                if (scanner.current() == '.') {
+                sb.append(reader.current());
+                if (reader.current() == '.') {
                     dots++;
                 }
                 skipScanner();
-            } while (Character.isDigit(scanner.current())|| scanner.current() == '.');
+            } while (Character.isDigit(reader.current())|| reader.current() == '.');
 
             final String value = sb.toString();
             if (dots == 0) {
@@ -107,9 +98,9 @@ public class Scanner implements AutoCloseable{
             return symbol;
         }
 
-        if (scanner.current() == ':') {
+        if (reader.current() == ':') {
             skipScanner();
-            if (scanner.current() == '=') {
+            if (reader.current() == '=') {
                 skipScanner();
                 return new Symbol(line, column, Symbol.SymbolType.Becomes);
             } else {
@@ -117,39 +108,39 @@ public class Scanner implements AutoCloseable{
             }
         }
 
-        if (scanner.current() == '"' || scanner.current() == '\'') {
-            final char openChar = scanner.current();
+        if (reader.current() == '"' || reader.current() == '\'') {
+            final char openChar = reader.current();
             skipScanner();
             boolean escape = false;
-            while (escape || (scanner.current() != openChar) && scanner.current() != '\n' && scanner.current() != '\0') {
-                escape = !escape && scanner.current() == '\\';
-                sb.append(scanner.current());
+            while (escape || (reader.current() != openChar) && reader.current() != '\n' && reader.current() != '\0') {
+                escape = !escape && reader.current() == '\\';
+                sb.append(reader.current());
                 skipScanner();
             }
-            if (scanner.current() == openChar) {
+            if (reader.current() == openChar) {
                 skipScanner();
                 return new StringConstant(line, column, sb.toString());
-            } else if (scanner.current() == '\n'|| scanner.current() == '\0') {
+            } else if (reader.current() == '\n'|| reader.current() == '\0') {
                 return new InvalidToken(line, column, "non-terminated string fragment: %s".formatted(sb.toString()));
             }
         }
 
-        if (scanner.current() == '_' || (!Character.isDigit(scanner.current()) && Character.isLetterOrDigit(scanner.current()))) {
+        if (reader.current() == '_' || (!Character.isDigit(reader.current()) && Character.isLetterOrDigit(reader.current()))) {
 
             do {
-                sb.append(scanner.current());
+                sb.append(reader.current());
                 skipScanner();
-            } while (scanner.current() == '_' || Character.isLetterOrDigit(scanner.current()));
+            } while (reader.current() == '_' || Character.isLetterOrDigit(reader.current()));
 
             return new Word(line, column, sb.toString());
         }
 
-        return new InvalidToken(line, column, Character.toString(scanner.current()));
+        return new InvalidToken(line, column, Character.toString(reader.current()));
 
     }
 
     private Symbol parseSymbol(int line, int column) throws IOException {
-        final var c = scanner.current();
+        final var c = reader.current();
 
         return switch (c) {
             case '(' -> { skipScanner(); yield new Symbol(line, column, Symbol.SymbolType.LeftParenthesis); }
@@ -173,7 +164,7 @@ public class Scanner implements AutoCloseable{
             case '&' -> { skipScanner(); yield new Symbol(line, column, Symbol.SymbolType.Ampersand); }
             case ':' -> { // ":", ":=" and "=" are all valid, also like this: "<<", ">>" "?:", "<=", ">", "!=", "++", "--"
                 skipScanner();
-                final var c2 = scanner.current();
+                final var c2 = reader.current();
                 yield switch (c2) {
                     case '=' -> {
                         skipScanner();
@@ -184,11 +175,11 @@ public class Scanner implements AutoCloseable{
             }
             case '=' -> { // "=", "==" and "===" are all valid (like <<=, >>=)
                 skipScanner();
-                final var c2 = scanner.current();
+                final var c2 = reader.current();
                 yield switch (c2) {
                     case '=' -> {
                         skipScanner();
-                        final var c3 = scanner.current();
+                        final var c3 = reader.current();
                         yield switch (c3) {
                             case '=' -> {
                                 skipScanner();
@@ -205,6 +196,6 @@ public class Scanner implements AutoCloseable{
 
     @Override
     public void close() throws Exception {
-        scanner.close();
+        reader.close();
     }
 }
