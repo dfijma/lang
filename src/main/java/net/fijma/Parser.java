@@ -96,7 +96,7 @@ public class Parser {
             }
 
             final var semicolon = parseSymbol(Symbol.SymbolType.Semicolon);
-            if (currentSymbolIs(Symbol.SymbolType.Semicolon)
+            if (semicolon.isSuccess()
                     || tokenLine.previousTokenLastOfLine()
                     || tokenLine.currentToken() instanceof EndOfProgram) {
                 result.addLast(statementOrExpression.value());
