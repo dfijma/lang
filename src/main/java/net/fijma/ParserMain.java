@@ -54,6 +54,7 @@ public class ParserMain {
             }
             if (unit.isLast()) break;
             prompt();
+            parser.skipEndOfLine();
         }
     }
 

@@ -27,6 +27,12 @@ public class Parser {
         return result;
     }
 
+    public void skipEndOfLine() throws IOException {
+        if (currentToken instanceof EndOfLine) {
+            skip();
+        }
+    }
+
     public Unit parseUnit() throws IOException {
 
         final List<Statement> result = new ArrayList<>();
@@ -45,14 +51,15 @@ public class Parser {
             }
 
             final var semicolon = parseSymbol(Symbol.SymbolType.Semicolon);
-            final var endOfLine = parseEndOfLine();
-            final var endOfProgram = currentToken instanceof EndOfProgram;
+            final var endOfLine = currentToken instanceof EndOfLine;
+            // final var endOfProgram = currentToken instanceof EndOfProgram;
             if (semicolon.isSuccess()
-                    || endOfLine.isSuccess()
-                    || endOfProgram) {
+                    || endOfLine) // .isSuccess()
+                    // || endOfProgram)
+                {
                 result.addLast(statementOrExpression.value());
-                if ( endOfLine.isSuccess() || endOfProgram) {
-                    return new Unit(endOfProgram, result);
+                if ( endOfLine ) {
+                    return new Unit(false, result);
                 }
             } else {
                 errorToken = semicolon.token();
