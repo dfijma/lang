@@ -13,7 +13,7 @@ import java.io.InputStream;
 
 public class ParserMain {
 
-    static boolean isTTY = System.console() != null;
+    static boolean isTTY = true; // System.console() != null;
 
     private static void prompt() {
         if (isTTY) {
@@ -54,7 +54,6 @@ public class ParserMain {
             }
             if (unit.isLast()) break;
             prompt();
-            parser.skipEndOfLine();
         }
     }
 

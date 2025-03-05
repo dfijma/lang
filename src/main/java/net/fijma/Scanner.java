@@ -33,17 +33,25 @@ public class Scanner implements AutoCloseable{
 
     private void setDeferredSkip() {
         if (deferredSkip) throw new IllegalStateException("Deferred skip already set");
-       deferredSkip = true;
+        deferredSkip = true;
     }
 
     public Token next() throws IOException {
         while (true) {
             final var token = nextToken();
-            if (!(token instanceof EndOfLine) || interactive) {
-                return token;
+            skipWhitespace();
+            if (token != null) {
+                return token.setEOL(reader.current() == '\n');
             }
         }
     }
+
+    private void skipWhitespace() throws IOException {
+        while (reader.current() != '\n' && (reader.current() != 11 || !interactive) && Character.isWhitespace(reader.current())) {
+            skipScanner();
+        }
+    }
+
     private Token nextToken() throws IOException {
 
         if (deferredSkip) {
@@ -54,13 +62,7 @@ public class Scanner implements AutoCloseable{
         final int line = reader.line();
         final int column = reader.column();
 
-        while (reader.current() != '\n' && Character.isWhitespace(reader.current())) {
-            boolean isKill = interactive && (reader.current() == 11);
-            skipScanner();
-            if (isKill) {
-                return new Kill(line, column);
-            }
-        }
+        skipWhitespace();
 
         if (reader.current() == '\0') {
             return new EndOfProgram(line, column);
@@ -68,7 +70,7 @@ public class Scanner implements AutoCloseable{
 
         if (reader.current() == '\n') {
             setDeferredSkip();
-            return new EndOfLine(line, column);
+            return null;
         }
 
         sb.setLength(0);

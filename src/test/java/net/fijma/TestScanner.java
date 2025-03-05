@@ -18,11 +18,11 @@ public class TestScanner {
 
     @Test
     public void testRegular() {
-        test("trivial", "een\n", List.of("Word(een)", "EndOfLine", "EndOfProgram"));
-        test("trivial", "een  \n", List.of("Word(een)", "EndOfLine", "EndOfProgram"));
+        test("trivial", "een\n", List.of("Word(een)(EOL)" , "EndOfProgram"));
+        test("trivial", "een  \n", List.of("Word(een)(EOL)", "EndOfProgram"));
         test("trivial (EOF)", "een", List.of("Word(een)", "EndOfProgram"));
-        test("some identifiers split on two lines", "een twee\r\ndrie vier\r\n", List.of("Word(een)", "Word(twee)", "EndOfLine", "Word(drie)", "Word(vier)", "EndOfLine", "EndOfProgram"));
-        test("some identifiers split on two lines (NO EOL)", "een twee\r\ndrie vier", List.of("Word(een)", "Word(twee)", "EndOfLine", "Word(drie)", "Word(vier)", "EndOfProgram"));
+        test("some identifiers split on two lines", "een twee\r\ndrie vier\r\n", List.of("Word(een)", "Word(twee)(EOL)", "Word(drie)", "Word(vier)(EOL)", "EndOfProgram"));
+        test("some identifiers split on two lines (NO EOL)", "een twee\r\ndrie vier", List.of("Word(een)", "Word(twee)(EOL)", "Word(drie)", "Word(vier)", "EndOfProgram"));
     }
 
     @Test
@@ -44,11 +44,11 @@ public class TestScanner {
 
     @Test
     void testNewLine() {
-        test("a regular newline", "\n", List.of( "EndOfLine", "EndOfProgram"));
-        test("the CR is optional", "\r\n", List.of("EndOfLine", "EndOfProgram"));
-        test("a lot CR's are ignored", "\r\r\n\r", List.of("EndOfLine", "EndOfProgram"));
-        test("a lot of newline", "\nxx\n\nyy", List.of("EndOfLine", "Word(xx)", "EndOfLine", "EndOfLine", "Word(yy)", "EndOfProgram"));
-        test("a lot of newlines with some optional CR's", "\r\nxx\n\r\nyy\n\r", List.of("EndOfLine", "Word(xx)", "EndOfLine", "EndOfLine", "Word(yy)", "EndOfLine", "EndOfProgram"));
+        test("a regular newline", "\n", List.of( "EndOfProgram"));
+        test("the CR is optional", "\r\n", List.of( "EndOfProgram"));
+        test("a lot CR's are ignored", "\r\r\n\r", List.of("EndOfProgram"));
+        test("a lot of newline", "\nxx\n\nyy", List.of("Word(xx)(EOL)", "Word(yy)", "EndOfProgram"));
+        test("a lot of newlines with some optional CR's", "\r\nxx\n\r\nyy\n\r", List.of("Word(xx)(EOL)", "Word(yy)(EOL)", "EndOfProgram"));
     }
 
     @Test
@@ -75,10 +75,10 @@ public class TestScanner {
         test("the empty string", "\"\"", List.of("StringConstant()", "EndOfProgram"));
         test("some regular string", "\"abc def\"", List.of("StringConstant(abc def)", "EndOfProgram"));
         test("string with escaping", "\"a\\b\\\\c\\nd\\ef\"", List.of("StringConstant(a\\b\\\\c\\nd\\ef)", "EndOfProgram"));
-        test("non-terminated string (end of line)", "\"a\n", List.of("InvalidToken(non-terminated string fragment: a)", "EndOfLine", "EndOfProgram"));
+        test("non-terminated string (end of line)", "\"a\n", List.of("InvalidToken(non-terminated string fragment: a)(EOL)", "EndOfProgram"));
         test("non-terminated string (end of file)", "\"a", List.of("InvalidToken(non-terminated string fragment: a)", "EndOfProgram"));
-        test("tokenizer can recover after non-terminated string", "\"a\nabc", List.of("InvalidToken(non-terminated string fragment: a)", "EndOfLine", "Word(abc)", "EndOfProgram"));
-        test("empty non terminated (end of line)", "\"\n", List.of("InvalidToken(non-terminated string fragment: )", "EndOfLine", "EndOfProgram"));
+        test("tokenizer can recover after non-terminated string", "\"a\nabc", List.of("InvalidToken(non-terminated string fragment: a)(EOL)", "Word(abc)", "EndOfProgram"));
+        test("empty non terminated (end of line)", "\"\n", List.of("InvalidToken(non-terminated string fragment: )(EOL)", "EndOfProgram"));
         test("empty non terminated (end of file)", "\"", List.of("InvalidToken(non-terminated string fragment: )", "EndOfProgram"));
         test("empty non terminated (explicit end of file)", "\"\0", List.of("InvalidToken(non-terminated string fragment: )", "EndOfProgram"));
         test("no need to escape single quote in double quoted string", "\"a'bc\"", List.of("StringConstant(a'bc)", "EndOfProgram"));
@@ -87,7 +87,7 @@ public class TestScanner {
     @Test
     void testSingleQuotedString() {
         test("some regular string (single quoted)", "'abc def'", List.of("StringConstant(abc def)", "EndOfProgram"));
-        test("empty non terminated (single quoted, end of line)", "'\n", List.of("InvalidToken(non-terminated string fragment: )", "EndOfLine", "EndOfProgram"));
+        test("empty non terminated (single quoted, end of line)", "'\n", List.of("InvalidToken(non-terminated string fragment: )(EOL)", "EndOfProgram"));
         test("empty non terminated (single quoted, end of file)", "'", List.of("InvalidToken(non-terminated string fragment: )", "EndOfProgram"));
         test("empty non terminated (single quored explicit end of file)", "'\0", List.of("InvalidToken(non-terminated string fragment: )", "EndOfProgram"));
         test("no need to escape double quote in single quoted string", "'a\"bc'", List.of("StringConstant(a\"bc)", "EndOfProgram"));

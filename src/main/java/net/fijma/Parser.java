@@ -3,19 +3,23 @@ package net.fijma;
 import net.fijma.parsetree.*;
 import net.fijma.token.*;
 
+import javax.swing.plaf.synth.SynthCheckBoxMenuItemUI;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.Semaphore;
 
 public class Parser {
 
     private final Scanner scanner;
     private final boolean interactive;
+    private Token previousToken;
     private Token currentToken;
 
     private Parser(Scanner scanner, boolean interactive) throws IOException {
         this.scanner = scanner;
         this.interactive = interactive;
         this.currentToken = scanner.next();
+        this.previousToken = new InvalidToken(0, 0 ,"before first line").setEOL(true);
     }
 
     static Parser create(Scanner scanner) throws IOException {
@@ -27,18 +31,16 @@ public class Parser {
         return result;
     }
 
-    public void skipEndOfLine() throws IOException {
-        if (currentToken instanceof EndOfLine) {
-            skip();
-        }
-    }
-
     public Unit parseUnit() throws IOException {
 
         final List<Statement> result = new ArrayList<>();
 
         String error;
         Token errorToken;
+
+        if (deferredSkip) {
+            _skip();
+        }
 
         while (true) {
 
@@ -50,20 +52,20 @@ public class Parser {
                 break;
             }
 
-            final var semicolon = parseSymbol(Symbol.SymbolType.Semicolon);
-            final var endOfLine = currentToken instanceof EndOfLine;
-            // final var endOfProgram = currentToken instanceof EndOfProgram;
-            if (semicolon.isSuccess()
-                    || endOfLine) // .isSuccess()
-                    // || endOfProgram)
-                {
+            final var semicolon = currentToken instanceof Symbol symbol && symbol.type == Symbol.SymbolType.Semicolon;
+            if (semicolon) { setDeferredSkip(); }
+            final var endOfLine =  currentToken.isEOL();
+            final var endOfProgram = currentToken instanceof EndOfProgram;
+            if (semicolon
+                    || endOfLine
+                    || endOfProgram) {
                 result.addLast(statementOrExpression.value());
-                if ( endOfLine ) {
-                    return new Unit(false, result);
+                if ( endOfLine|| endOfProgram ) {
+                    return new Unit(endOfProgram, result);
                 }
             } else {
-                errorToken = semicolon.token();
-                error = semicolon.error();
+                errorToken = currentToken;
+                error = "; expected";
                 break;
             }
 
@@ -190,15 +192,6 @@ public class Parser {
         return parseSymbol(Set.of(expectedSymbol));
     }
 
-    private ParseResult<String> parseEndOfLine() throws IOException {
-        final var token = currentToken;
-        if (token instanceof EndOfLine) {
-            skip();
-            return ParseResult.success("\n");
-        }
-        return ParseResult.error(token, "eol expected");
-    }
-
     private ParseResult<Word> parseReservedWord(String word) throws IOException {
         final var token = currentToken;
         return switch (token) {
@@ -240,8 +233,21 @@ public class Parser {
         return ParseResult.genericError(token);
     }
 
+    private boolean deferredSkip = false;
+
+    private void setDeferredSkip() {
+        if (deferredSkip) throw new IllegalStateException("deferred skip");
+        deferredSkip = true;
+    }
+
     private void skip() throws IOException {
+        _skip();
+    }
+
+    private void _skip() throws IOException {
+        deferredSkip = false;
         if (currentToken instanceof EndOfProgram) return;
+        previousToken = currentToken;
         currentToken = scanner.next();
     }
 

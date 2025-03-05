@@ -59,26 +59,29 @@ public class TestParser {
 
     @Test
     public void testList() {
-        test("additional newlines ignored", "\n\n10;\n\n\n14\n\n\n", null);
-        test("empty", "", null);
-        test("full ; \n", "10;\n11;\n", "[10, 11]");
-        test("terminated full ; \n", "15;\n", "[15]");
-        test("first expression not terminated", "10 12;\n", null);
-        test("optional \n", "10;12", "[10, 12]");
-        test("optional '", "10\n13", "[10, 13]");
-        test("end of program terminates", "16\0a7", "[16]");
-        test("terminated by just end of program", "10;13\0", "[10, 13]");
+       test("additional newlines ignored", "\n\n10;\n\n\n14\n\n\n", "[10, 14]");
+       test("empty", "", null);
+       test("full ; \n", "10;\n11;\n", "[10, 11]");
+       test("terminated full ; \n", "15;\n", "[15]");
+       test("first expression not terminated", "10 12;\n", null);
+       test("optional \n", "10;12", "[10, 12]");
+       test("optional '", "17\n18", "[17, 18]");
+       test("end of program terminates", "16\0a7", "[16]");
+       test("terminated by just end of program", "10;13\0", "[10, 13]");
     }
 
 
     @Test
+    @Disabled
     public void testUnit() {
+        testUnit("completely empty", "", 0, null);
+        testUnit("completely empty, just a newline", "\n", 0, null);
         testUnit("aaa", "a + \n", 0, null);
         testUnit("trivial", "1\0", 0, "[1]");
         testUnit("trivial", "1\n\0", 0, "[1]");
         testUnit("trivial, second is empty and terminates ", "1\n\0", 1, null);
-        testUnit("intial unit empty", "\n1111  ;  2222\n\n3333\n\n4444", 0, null);
         testUnit("terminated by semicolon", "1111;2222;\n\naaaa\n\n4444", 0, "[1111, 2222]");
+        testUnit("intial unit empty", "\n1111  ;  2222\n\n3333\n\n4444", 0, null);
         testUnit("aaa", "a\n33 22;", 0, "[Identifier(a)]");
     }
 

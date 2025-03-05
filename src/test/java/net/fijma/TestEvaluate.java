@@ -11,7 +11,6 @@ import java.nio.charset.StandardCharsets;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 
-@Disabled
 public class TestEvaluate {
 
     @Test

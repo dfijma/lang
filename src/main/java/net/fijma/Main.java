@@ -1,6 +1,5 @@
 package net.fijma;
 
-import net.fijma.token.EndOfLine;
 import net.fijma.token.EndOfProgram;
 
 public class Main {
@@ -23,7 +22,7 @@ public class Main {
                 if (token instanceof EndOfProgram) break;
                 System.out.print(token + " ");
                 if (token instanceof EndOfProgram) break;
-                if (token instanceof EndOfLine) {
+                if (token.isEOL()) {
                     System.out.println();
                     prompt();
                 }
