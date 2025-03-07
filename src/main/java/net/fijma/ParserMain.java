@@ -13,7 +13,7 @@ import java.io.InputStream;
 
 public class ParserMain {
 
-    static boolean isTTY = true; // System.console() != null;
+    static boolean isTTY = System.console() != null;
 
     private static void prompt() {
         if (isTTY) {
@@ -43,6 +43,7 @@ public class ParserMain {
             final Unit unit = parser.parseUnit();
             if (unit.isError()) {
                 System.out.printf("syntax error (position %d): %s%n", unit.token().column(), unit.errorMessage());
+                parser.skipToEndOfLine();
             } else if (!unit.value().isEmpty()) {
                 System.out.println(unit.value());
                 for (Statement statement : unit.value()) {

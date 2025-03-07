@@ -31,6 +31,12 @@ public class Parser {
         return result;
     }
 
+    public void skipToEndOfLine() throws IOException {
+        while (!deferredSkip) {
+            skip();
+        }
+    }
+
     public Unit parseUnit() throws IOException {
 
         final List<Statement> result = new ArrayList<>();
@@ -39,28 +45,32 @@ public class Parser {
         Token errorToken;
 
         if (deferredSkip) {
-            _skip();
+            _skip(true);
         }
 
         while (true) {
 
+            if (currentToken instanceof EndOfProgram ) {
+                return new Unit(true, result); // empty result
+            }
+
             final var statementOrExpression = parseStatementOrExpression();
 
             if (statementOrExpression.isError()) {
+                _deferredSkip();
                 errorToken = statementOrExpression.token();
                 error = statementOrExpression.error();
                 break;
             }
 
-            final var semicolon = currentToken instanceof Symbol symbol && symbol.type == Symbol.SymbolType.Semicolon;
-            if (semicolon) { setDeferredSkip(); }
-            final var endOfLine =  currentToken.isEOL();
+            final var semicolon = parseSymbol(Symbol.SymbolType.Semicolon);
+            final var endOfLine =  previousToken().isEOL();
             final var endOfProgram = currentToken instanceof EndOfProgram;
-            if (semicolon
+            if (semicolon.isSuccess()
                     || endOfLine
                     || endOfProgram) {
                 result.addLast(statementOrExpression.value());
-                if ( endOfLine|| endOfProgram ) {
+                if (endOfLine || endOfProgram) {
                     return new Unit(endOfProgram, result);
                 }
             } else {
@@ -110,8 +120,12 @@ public class Parser {
         final ParseResult<Expression> term = parseTerm();
         if (term.isError()) { return term; }
 
+        if (deferredSkip) { return term; }
+
         final ParseResult<Symbol> operator = parseSymbol(Set.of(Symbol.SymbolType.Plus, Symbol.SymbolType.Minus));
         if (operator.isError()) { return term; }
+
+        _deferredSkip();
 
         final ParseResult<Expression> expression = parseExpression();
         if (expression.isSuccess()) {
@@ -125,11 +139,17 @@ public class Parser {
         final var let = parseReservedWord("let");
         if (let.isError()) return ParseResult.genericError(let.token());
 
+        _deferredSkip();
+
         final ParseResult<Expression> variable = parseIdentifier();
         if (variable.isError()) return ParseResult.error(variable.token(), "identifier expected");
 
+        _deferredSkip();
+
         final var is = parseSymbol(Set.of(Symbol.SymbolType.Equals));
         if (is.isError()) return ParseResult.error(is.token(), is.error());
+
+        _deferredSkip();
 
         final var expression = parseExpression();
         if (expression.isError()) return ParseResult.error(expression.token(), expression.error());
@@ -235,20 +255,32 @@ public class Parser {
 
     private boolean deferredSkip = false;
 
-    private void setDeferredSkip() {
-        if (deferredSkip) throw new IllegalStateException("deferred skip");
-        deferredSkip = true;
+
+    private Token previousToken() {
+        if (deferredSkip) return currentToken;
+        return previousToken;
     }
 
     private void skip() throws IOException {
-        _skip();
+
+        if (currentToken.isEOL()) {
+            if (deferredSkip) throw new IllegalStateException("deferred skip");
+            deferredSkip = true;
+        } else {
+            _skip(false);
+        }
     }
 
-    private void _skip() throws IOException {
+    private void _skip(boolean atStart) throws IOException {
+        if (deferredSkip && !atStart) System.out.print("| ");
         deferredSkip = false;
         if (currentToken instanceof EndOfProgram) return;
         previousToken = currentToken;
         currentToken = scanner.next();
+    }
+
+    private void _deferredSkip() throws IOException {
+        if (deferredSkip) { _skip(false); }
     }
 
 }
