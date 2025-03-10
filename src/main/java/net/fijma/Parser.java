@@ -3,32 +3,23 @@ package net.fijma;
 import net.fijma.parsetree.*;
 import net.fijma.token.*;
 
-import javax.swing.plaf.synth.SynthCheckBoxMenuItemUI;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.Semaphore;
 
 public class Parser {
 
     private final Scanner scanner;
-    private final boolean interactive;
     private Token previousToken;
     private Token currentToken;
 
-    private Parser(Scanner scanner, boolean interactive) throws IOException {
+    private Parser(Scanner scanner) throws IOException {
         this.scanner = scanner;
-        this.interactive = interactive;
         this.currentToken = scanner.next();
         this.previousToken = new InvalidToken(0, 0 ,"before first line").setEOL(true);
     }
 
     static Parser create(Scanner scanner) throws IOException {
-        return create(scanner, false);
-    }
-
-    static Parser create(Scanner scanner, boolean interactive) throws IOException {
-        final var result = new Parser(scanner, interactive);
-        return result;
+        return new Parser(scanner);
     }
 
     public void skipToEndOfLine() throws IOException {
@@ -78,7 +69,6 @@ public class Parser {
                 error = "; expected";
                 break;
             }
-
         }
 
         if (errorToken == null || error == null) {
@@ -105,7 +95,7 @@ public class Parser {
     private ParseResult<? extends Statement> parseStatementOrExpression() throws IOException {
         final var statement = parseStatement();
         if (statement.isSuccess() || (statement.isError() && !statement.isGenericError())) { return statement;}
-        return parseExpression();
+        return parseExpression(true);
     }
 
     private ParseResult<Statement> parseStatement() throws IOException {
@@ -115,19 +105,19 @@ public class Parser {
     }
 
     // expression <- term [ additive-operator expression] | let x = expression |
-    private ParseResult<Expression> parseExpression() throws IOException {
+    private ParseResult<Expression> parseExpression(boolean top) throws IOException {
 
-        final ParseResult<Expression> term = parseTerm();
+        final ParseResult<Expression> term = parseTerm(top);
         if (term.isError()) { return term; }
 
-        if (deferredSkip) { return term; }
+        if (deferredSkip && top) { return term; } else { _deferredSkip(); }
 
         final ParseResult<Symbol> operator = parseSymbol(Set.of(Symbol.SymbolType.Plus, Symbol.SymbolType.Minus));
         if (operator.isError()) { return term; }
 
         _deferredSkip();
 
-        final ParseResult<Expression> expression = parseExpression();
+        final ParseResult<Expression> expression = parseExpression(top);
         if (expression.isSuccess()) {
             return ParseResult.success(new BinaryExpression(term.value(), operator.value(), expression.value()));
         } else {
@@ -151,22 +141,26 @@ public class Parser {
 
         _deferredSkip();
 
-        final var expression = parseExpression();
+        final var expression = parseExpression(true);
         if (expression.isError()) return ParseResult.error(expression.token(), expression.error());
 
         return ParseResult.success(new LetStatement((Identifier)(variable.value()), expression.value()));
     }
 
     // term <- factor [ multiplicative-operator term]
-    private ParseResult<Expression> parseTerm() throws IOException {
+    private ParseResult<Expression> parseTerm(boolean top) throws IOException {
 
         final ParseResult<Expression> factor = parseFactor();
         if (factor.isError()) { return factor; }
 
+        if (deferredSkip && top) { return factor; } else { _deferredSkip(); }
+
         final ParseResult<Symbol> operator = parseSymbol(Set.of(Symbol.SymbolType.Asterisk, Symbol.SymbolType.Slash));
         if (operator.isError()) { return factor; }
 
-        final ParseResult<Expression> term = parseTerm();
+        _deferredSkip();
+
+        final ParseResult<Expression> term = parseTerm(top);
         if (term.isSuccess()) {
             return ParseResult.success(new BinaryExpression(factor.value(), operator.value(), term.value()));
         } else {
@@ -184,8 +178,13 @@ public class Parser {
         if (identifier.isSuccess()) return identifier;
 
         if (parseSymbol(Symbol.SymbolType.LeftParenthesis).isSuccess()) {
-            final ParseResult<Expression> expression = parseExpression();
+
+            _deferredSkip();
+
+            final ParseResult<Expression> expression = parseExpression(false);
             if (expression.isError()) { return expression; }
+
+            _deferredSkip();
 
             if (parseSymbol(Symbol.SymbolType.RightParenthesis).isSuccess()) {
                 return expression;

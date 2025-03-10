@@ -74,7 +74,7 @@ public class Main {
                     }
                 }
             } else {
-                final Parser parser = Parser.create(scanner, isTTY);
+                final Parser parser = Parser.create(scanner);
                 if (isTTY) {
                     parseUnits(parser);
                 } else {
